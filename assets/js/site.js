@@ -70,7 +70,9 @@
   const BEATS = ACTIVE.beats.map(b => ({ ...b, el: document.querySelector(b.sel) }))
                             .filter(b => b.el);
 
-  const SMOOTH_RATE = 6.5;      // 1/s — inertial chase stiffness (lower = weightier camera glide)
+  const SMOOTH_RATE = 13;       // 1/s — engine tracks Lenis's already-smoothed scroll tightly
+                                //        (Lenis is the single smoothing layer; keep this high so
+                                //         the canvas doesn't add a SECOND lag → no floaty drift)
   const POOL = 6;               // concurrent frame fetches…
   const LADDER_POOL = 4;        // …of which background ladder may use at most 4
   const HOT_BEHIND = 12, HOT_AHEAD = 24;
@@ -435,14 +437,14 @@
       window.addEventListener("scroll", () => (dirty = true), { passive: true });
       return;
     }
-    /* Weighty cinematic glide: longer momentum, easeOutExpo settle, slower wheel
-       so the descent feels vast and you never blow past a world. */
+    /* Single, responsive smoothing layer. Short momentum tail so the scene
+       tracks the pointer and settles the instant you stop (no floaty drift);
+       the engine's SMOOTH_RATE chase above then tracks this tightly. */
     lenis = new Lenis({
-      duration: 1.35,
-      easing: (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t)),
+      duration: 0.8,
       smoothWheel: true,
-      wheelMultiplier: 0.72,
-      touchMultiplier: 1.15,
+      wheelMultiplier: 1.0,
+      touchMultiplier: 1.2,
     });
     lenis.on("scroll", () => (dirty = true));
     function raf(t) { lenis.raf(t); requestAnimationFrame(raf); }
