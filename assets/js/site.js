@@ -62,7 +62,7 @@
     ],
   };
 
-  const ACTIVE = LEGACY; // ← flip to HELIX_V2 when v1–v4 footage is processed
+  const ACTIVE = HELIX_V2; // v1–v4 footage processed 24 Jul — orbital descent live
 
   const SEGMENTS = ACTIVE.segments.map(s => ({
     ...s, focal: Array.isArray(s.focal) ? s.focal : [s.focal, s.focal],
@@ -70,7 +70,7 @@
   const BEATS = ACTIVE.beats.map(b => ({ ...b, el: document.querySelector(b.sel) }))
                             .filter(b => b.el);
 
-  const SMOOTH_RATE = 9;        // 1/s — inertial chase stiffness
+  const SMOOTH_RATE = 6.5;      // 1/s — inertial chase stiffness (lower = weightier camera glide)
   const POOL = 6;               // concurrent frame fetches…
   const LADDER_POOL = 4;        // …of which background ladder may use at most 4
   const HOT_BEHIND = 12, HOT_AHEAD = 24;
@@ -435,7 +435,15 @@
       window.addEventListener("scroll", () => (dirty = true), { passive: true });
       return;
     }
-    lenis = new Lenis({ duration: 1.1, smoothWheel: true, wheelMultiplier: 0.9 });
+    /* Weighty cinematic glide: longer momentum, easeOutExpo settle, slower wheel
+       so the descent feels vast and you never blow past a world. */
+    lenis = new Lenis({
+      duration: 1.35,
+      easing: (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+      wheelMultiplier: 0.72,
+      touchMultiplier: 1.15,
+    });
     lenis.on("scroll", () => (dirty = true));
     function raf(t) { lenis.raf(t); requestAnimationFrame(raf); }
     requestAnimationFrame(raf);
