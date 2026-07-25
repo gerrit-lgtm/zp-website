@@ -183,7 +183,33 @@
       and the range-capable server: measure-draw (plate sizing), boot-check
       (veil/console/failed requests), copy-contrast (portrait legibility),
       scroll-sweep (the enter-once camera invariant), sprite-dump (shader drift),
-      capture-beats (the 7 beats, landscape or portrait, with or without copy). */
+      perf-check (draw() cost), capture-beats (the 7 beats, landscape or
+      portrait, with or without copy).
+   19. POLISH Job G — spending the budget plating freed, on DETAIL (Gerrit's
+      call, asked explicitly). Nothing is procedurally shaded per-frame any
+      more, and draw() measured 1.2 ms against an 8.3 ms frame, so the room was
+      real. Measure with tools/perf-check.mjs, which times draw() itself —
+      the rAF interval is vsync-locked and reads 8.3 ms however cheap or
+      expensive the scene is, right up until it is already too slow.
+      a) DUST 900 -> 2600, and it is now a STREAM rather than a haze. It used to
+         be scattered anywhere from 0.3 to 1.8 of the coil radius with +-2 of
+         jitter, so nothing in it traced the path the camera falls along. Now
+         62% is a tight three-way braid hugging the helix, the rest is the old
+         diffuse cloud (the braid alone looks like a wire), and a 10% tail
+         spirals in and settles on the origin — the helix stops at BOT while the
+         mark sits 1.4 below it, so the arrival beat had nothing arriving. It is
+         dust and not a shape on purpose: note 14 cut a ring from exactly there.
+         Cost went DOWN, 1.2 -> 1.0 ms, because motes below ~1.7px now take a
+         flat rect instead of a createRadialGradient — the per-particle gradient
+         allocation, invisible at that size, was the entire reason for the old
+         900 cap. Stride is 5 now (x, y, z, alpha, size), not 4.
+      b) ASTEROIDS 138 -> 230, with pits on the big ones, and a REAL BUG FIXED:
+         the fill gradient was built at fixed local coordinates AFTER
+         ctx.rotate, so every rock's terminator rode its own rotation — a belt
+         lit from 138 different directions sitting next to plates that are all
+         lit from the upper left. The gradient axis is now counter-rotated by
+         -rot, which expresses the screen-space key light in the rock's frame.
+      Whole pass costs 1.2 -> 1.3 ms/frame. */
 (() => {
   "use strict";
 
@@ -393,12 +419,55 @@
       }
       this.field = fs; this.nField = F;
 
-      // dust
-      const D = Math.round(900 * dens), du = new Float32Array(D * 4);
+      /* dust — the connective tissue of the descent (Job G)
+         Stride 5: x, y, z, alpha, size.
+
+         This used to be 900 motes scattered anywhere from 0.3 to 1.8 of the
+         coil radius with +-2 of jitter, which is a HAZE, not a stream: nothing
+         in it traced the path the camera is falling along. It is now two
+         populations. The STRAND hugs the helix tightly and is what actually
+         reads as a braided flow; the HAZE is the old diffuse cloud, kept
+         because the strand alone looks like a wire. Only the strand got dense —
+         spending the particles where they describe the geometry. */
+      const D = Math.round(2600 * dens), du = new Float32Array(D * 5);
+      const STRAND = Math.round(D * 0.62);
+      const TAIL = Math.round(D * 0.10);          // convergence into the origin
       for (let i = 0; i < D; i++) {
-        const u = Math.random(), p = this.helix(u, this.RAD * (0.3 + Math.random() * 1.5));
-        du[i * 4] = p[0] + (Math.random() - .5) * 4; du[i * 4 + 1] = p[1] + (Math.random() - .5) * 4; du[i * 4 + 2] = p[2] + (Math.random() - .5) * 4;
-        du[i * 4 + 3] = 0.03 + Math.random() * 0.07;
+        /* Job G: the last stretch of the stream spirals in and SETTLES on the
+           origin. The helix stops at BOT while the mark sits 1.4 below it, so
+           the stream used to just stop short and the arrival beat had nothing
+           arriving. This is deliberately dust and not a new shape: note 14 cut
+           a ring here because a foreign silhouette next to the mark reads as
+           part of the logo. A tapering strand is the vocabulary already in use. */
+        if (i >= D - TAIL) {
+          const t = (i - (D - TAIL)) / TAIL;         // 0 at the coil, 1 at the mark
+          const ang = this.helixAng(1) + t * 3.4;
+          const rad = this.RAD * Math.pow(1 - t, 1.5) * 0.85;
+          const spread = 0.30 + (1 - t) * 0.5;
+          du[i * 5] = Math.cos(ang) * rad + (Math.random() - .5) * spread;
+          du[i * 5 + 1] = this.BOT - t * 1.4 + (Math.random() - .5) * spread;
+          du[i * 5 + 2] = Math.sin(ang) * rad + (Math.random() - .5) * spread;
+          du[i * 5 + 3] = (0.05 + Math.random() * 0.12) * (1 - t * 0.45);
+          du[i * 5 + 4] = Math.random() < 0.18 ? 0.6 + Math.random() * 0.7 : 0.12 + Math.random() * 0.26;
+          continue;
+        }
+        const strand = i < STRAND;
+        const u = Math.random();
+        // three sub-strands braid around each other along the coil
+        const braid = strand ? (i % 3) * 2.094 : 0;
+        const rad = strand ? this.RAD * (0.93 + Math.random() * 0.14)
+                           : this.RAD * (0.3 + Math.random() * 1.5);
+        const p = this.helix(u, rad);
+        const jit = strand ? 0.55 : 4;
+        const off = strand ? 0.42 : 0;
+        du[i * 5] = p[0] + Math.cos(this.helixAng(u) + braid) * off + (Math.random() - .5) * jit;
+        du[i * 5 + 1] = p[1] + (Math.random() - .5) * jit;
+        du[i * 5 + 2] = p[2] + Math.sin(this.helixAng(u) + braid) * off + (Math.random() - .5) * jit;
+        du[i * 5 + 3] = strand ? 0.05 + Math.random() * 0.13 : 0.03 + Math.random() * 0.07;
+        /* Most motes are grains and a few are bright flecks. drawDust spends a
+           radial gradient only on the big ones, so this split is what lets the
+           count nearly triple for roughly the same cost. */
+        du[i * 5 + 4] = Math.random() < 0.14 ? 0.7 + Math.random() * 0.9 : 0.12 + Math.random() * 0.3;
       }
       this.dust = du; this.nDust = D;
 
@@ -419,16 +488,24 @@
          replacements land (positions and kinds are deterministic). */
       this.planets.forEach((p, i) => { p.sprite = (prevPlanets && prevPlanets[i] && prevPlanets[i].sprite) || null; });
 
-      // asteroids, thickest around the fissured planet (the factory's ventures)
-      const A = 138, ast = [];
+      /* asteroids, thickest around the fissured planet (the factory's ventures)
+         Job G: 138 -> 230, and each rock carries a few pits so the big ones
+         read as stone rather than as a flat polygon. The belt is the only
+         mid-scale geometry between the worlds, so it is worth the detail. */
+      const A = Math.round(230 * (dens < 1 ? 0.7 : 1)), ast = [];
       for (let i = 0; i < A; i++) {
-        const belt = i < 112;
+        const belt = i < Math.round(A * 0.81);
         const near = belt ? this.planets[2] : this.planets[0];
         const rr = belt ? (0.75 + Math.random() * 1.15) : (1.0 + Math.random() * 1.9);
         const th = Math.random() * Math.PI * 2, el = (Math.random() - .5) * (belt ? .24 : .8);
         const pts = []; const n = 7 + ((Math.random() * 4) | 0);
         for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2; const rad = .6 + Math.random() * .55; pts.push([Math.cos(a) * rad, Math.sin(a) * rad]); }
-        ast.push({ x: near.x + Math.cos(th) * rr, y: near.y + el, z: near.z + Math.sin(th) * rr, s: .009 + Math.random() * .026, pts, rot: Math.random() * 6.283 });
+        const pits = [];
+        for (let k = 0, np = 1 + ((Math.random() * 3) | 0); k < np; k++) {
+          const pa = Math.random() * 6.283, pd = Math.random() * .42;
+          pits.push([Math.cos(pa) * pd, Math.sin(pa) * pd, .07 + Math.random() * .13]);
+        }
+        ast.push({ x: near.x + Math.cos(th) * rr, y: near.y + el, z: near.z + Math.sin(th) * rr, s: .009 + Math.random() * .026, pts, pits, rot: Math.random() * 6.283 });
       }
       this.asteroids = ast;
 
@@ -931,9 +1008,9 @@
       // dust bucketed too
       const dbk = []; for (let i = 0; i <= objs.length; i++) dbk.push([]);
       for (let i = 0; i < this.nDust; i++) {
-        const s = proj(this.dust[i * 4], this.dust[i * 4 + 1], this.dust[i * 4 + 2]); if (!s) continue;
+        const s = proj(this.dust[i * 5], this.dust[i * 5 + 1], this.dust[i * 5 + 2]); if (!s) continue;
         if (s[0] < -60 || s[0] > W + 60 || s[1] < -60 || s[1] > H + 60) continue;
-        dbk[bucketOf(s[2])].push([s, this.dust[i * 4 + 3]]);
+        dbk[bucketOf(s[2])].push([s, this.dust[i * 5 + 3], this.dust[i * 5 + 4]]);
       }
       const abk = []; for (let i = 0; i <= objs.length; i++) abk.push([]);
       for (const a of this.asteroids) {
@@ -961,13 +1038,26 @@
           ctx.fillRect(s[0] - sz / 2, s[1] - sz / 2, sz, sz);
         }
       };
+      /* Job G: two draw paths, chosen per mote. A createRadialGradient plus an
+         arc fill per particle is what capped the old count at 900 — most motes
+         are a couple of pixels across, where the gradient is invisible and the
+         allocation is the entire cost. Grains take a flat rect; only the flecks
+         big enough to show a falloff pay for one. */
       const drawDust = list => {
         ctx.globalCompositeOperation = 'lighter';
-        for (const [s, a] of list) {
+        for (const [s, a, sz] of list) {
           const near = Math.min(1, 10 / s[2]);
-          const r = Math.max(1, near * 9 * this.dpr);
+          const al = a * near;
+          if (al < .008) continue;
+          const r = near * 9 * this.dpr * (sz === undefined ? 1 : sz);
+          if (r < 1.7 * this.dpr) {
+            const d = Math.max(this.dpr, r);
+            ctx.fillStyle = 'rgba(150,180,232,' + Math.min(1, al * 1.35).toFixed(3) + ')';
+            ctx.fillRect(s[0] - d / 2, s[1] - d / 2, d, d);
+            continue;
+          }
           const g = ctx.createRadialGradient(s[0], s[1], 0, s[0], s[1], r);
-          g.addColorStop(0, 'rgba(120,150,205,' + (a * near).toFixed(3) + ')');
+          g.addColorStop(0, 'rgba(120,150,205,' + al.toFixed(3) + ')');
           g.addColorStop(1, 'rgba(80,110,170,0)');
           ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s[0], s[1], r, 0, 6.2832); ctx.fill();
         }
@@ -980,10 +1070,41 @@
           ctx.beginPath();
           for (let k = 0; k < a.pts.length; k++) { const px = a.pts[k][0] * r, py = a.pts[k][1] * r; k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
           ctx.closePath();
-          const g = ctx.createLinearGradient(-r, -r, r * .6, r);
-          g.addColorStop(0, 'rgba(74,92,120,.95)'); g.addColorStop(.45, 'rgba(26,33,48,1)'); g.addColorStop(1, 'rgba(9,12,20,1)');
+          /* Job G: light every rock from the SAME screen direction as the
+             bodies. The gradient used to be built at fixed local coordinates
+             AFTER ctx.rotate, so each asteroid's terminator rode its own
+             rotation — a belt lit from ~138 different directions, next to
+             plates that are all lit from the upper left. Counter-rotating the
+             gradient's axis by -rot expresses the screen-space key light in the
+             rock's local frame, so the belt now agrees with the worlds. */
+          const cr = Math.cos(a.rot), sr = Math.sin(a.rot);
+          const lx = -0.72 * cr + -0.69 * sr, ly = 0.72 * sr + -0.69 * cr;
+          const g = ctx.createLinearGradient(lx * r, ly * r, -lx * r * .85, -ly * r * .85);
+          g.addColorStop(0, 'rgba(96,118,152,.98)');
+          g.addColorStop(.32, 'rgba(52,66,92,1)');
+          g.addColorStop(.66, 'rgba(22,28,42,1)');
+          g.addColorStop(1, 'rgba(8,11,18,1)');
           ctx.fillStyle = g; ctx.fill();
-          if (r > 2) { ctx.strokeStyle = 'rgba(150,180,230,.18)'; ctx.lineWidth = Math.max(.5, this.dpr * .5); ctx.stroke(); }
+          if (r > 1.6) {
+            /* a hard rim on the lit edge only — a full outline reads as a
+               sticker, this reads as a sunlit edge */
+            ctx.save(); ctx.clip();
+            ctx.strokeStyle = 'rgba(178,205,255,.5)';
+            ctx.lineWidth = Math.max(.6, this.dpr * .9);
+            ctx.beginPath();
+            ctx.moveTo(lx * r * 1.6 - ly * r * 1.6, ly * r * 1.6 + lx * r * 1.6);
+            ctx.lineTo(lx * r * 1.6 + ly * r * 1.6, ly * r * 1.6 - lx * r * 1.6);
+            ctx.stroke();
+            ctx.restore();
+          }
+          if (r > 2.4) {
+            // a couple of shadowed pits, deterministic per rock
+            ctx.fillStyle = 'rgba(10,14,22,.55)';
+            for (let k = 0; k < a.pits.length; k++) {
+              const q = a.pits[k];
+              ctx.beginPath(); ctx.arc(q[0] * r, q[1] * r, q[2] * r, 0, 6.2832); ctx.fill();
+            }
+          }
           ctx.restore();
         }
       };
