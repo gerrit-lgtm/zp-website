@@ -14,7 +14,12 @@ verified in-browser**; Phases 2–4 are not started.
   helix past four worlds (= the four business worlds), the origin ring resolves into
   `mark.svg`, finale reveals the whole formation + contact. 8×100vh beats; no build step,
   no CDN deps. Three pages now run side by side: index (film) / lab (Three.js core) /
-  worlds (canvas galaxy).
+  worlds (canvas galaxy). **Polish pass (25 Jul eve, WORLDS-POLISH.md):** camera aim now
+  crossfades between consecutive bodies + worlds fade in around their own beat (nothing
+  exits and re-enters the frame — verified by 50/100-step scroll sweeps, landscape and
+  portrait), and the hero core renders at 1280px with a Landing.png-grade crescent
+  (two-layer rim + bloom, lit facet seams, glow-side arcs); planets 768px, deferred after
+  first paint, sprites survive width-class rebuilds — boot ~0.7 s, 120 fps scroll.
 - Three.js via ESM importmap — **no build step**, same static upload as today.
 - 460KB total transfer vs **78MB** of WebP frames. 120fps under software rendering.
 - Occlusion is real: two canvases sandwich the DOM (bg z0 · copy z10 · fg z20)

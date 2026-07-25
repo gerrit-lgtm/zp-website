@@ -11,7 +11,7 @@
    descent, running in real time.
 
    Deliberate changes from the standalone (everything else ports verbatim —
-   diff against scratchpad/original-core-engine.js if in doubt):
+   diff against prompts/reference-core-engine.js if in doubt):
    1. React wrapper -> plain IIFE; refs -> getElementById.
    2. 7 sections -> 8: the manifesto ("departure") is spliced between the
       hero and the first world. Everything keyed to section count shifts
@@ -30,7 +30,45 @@
    7. Reduced motion: scroll smoothing snaps, scene time freezes, grain
       holds still, parallax off.
    8. The mark billboard draws ABOVE the field on purpose — at the finale
-      the logo is chrome, not scenery. */
+      the logo is chrome, not scenery.
+   9. POLISH Job B — camera(): the round-to-nearest aim (weight dips to ZERO
+      mid-seam, throwing every body out of frame and back in) is replaced by
+      a smoothstep crossfade between CONSECUTIVE features that completes at
+      80% of the seam (before the eye's helix rotation peaks); per-section
+      hold weights retuned 1 / 0.5 / 0.62 -> 1 / 0.5 / 0.78. Invariant held:
+      in a 50- and a 100-step scroll sweep every body enters the frame once,
+      holds, and exits once (pre-finale; the finale reveal is by design).
+   10. POLISH Job A — sprite resolution: 384 -> core 1280 / planets 768
+      (mobile 768 / 512). makeSprite splits into renderSpriteRows; the core
+      renders synchronously before first paint (veil covers it), the four
+      planets defer to after first paint in 4-row chunks under a ~5 ms/rAF
+      budget (deferSprites, invalidated via this.sgen). On a width-class
+      REBUILD (no veil) the previous generation's sprites keep drawing and
+      the core re-shades through the same deferred path — nothing vanishes
+      and the resize handler never stalls.
+   11. POLISH Job A — core shader, matched to CI/Landing.png: a second
+      white-hot rim layer at the limb (seam-notched, so facets cut into the
+      crescent), rim modulated by the bumped normal, facet seams near the
+      terminator catch the rim light with LATERAL falloff, finer hex grid
+      (17, reference 13) with narrower seams (.78/.22, reference .72/.28),
+      base rim retuned rimK 8.5 -> 10.5 / rimP 3.4 -> 2.4, facet albedo
+      variance .022 -> .026, wide rim tinted electric blue (.48/.70/1.12,
+      reference .72/.85/1.05), and a baked two-layer directional halo
+      outside the limb.
+   12. POLISH Job A — drawCore: concentric shells biased to the GLOW side
+      via conic gradient (uniform rings as fallback), two-layer screen
+      bloom (tight near-white sheet + wide blue atmosphere); resize()
+      re-asserts imageSmoothingQuality 'high' after canvas realloc.
+   13. POLISH Job B — emergence fade: planets and ring draw only around
+      their own beat (+-1.2 sections, 0.35 ramp; the core is exempt, the
+      finale pull-back lerps everything back to full). The portrait lens is
+      wide enough to catch bodies sections away (the ring peeked over the
+      bottom edge two beats early, passed worlds clipped the top corner),
+      and each such peek re-violated the enter-once invariant on phones.
+      With it, the 50-step sweep holds the invariant in landscape (both
+      any-part-visible and centre-visible metrics) and portrait
+      (any-part-visible; centre-only seam clips in the 390px-wide frame
+      remain — the body never fully leaves view). */
 (() => {
   "use strict";
 
@@ -145,6 +183,10 @@
     helixAng(u) { return u * this.TURNS * Math.PI * 2 + 0.6; }
 
     buildScene() {
+      this.sgen = (this.sgen || 0) + 1; // invalidates any pending sprite jobs
+      /* POLISH: a width-class rebuild happens mid-scene with no veil — keep
+         the previous generation's sprites drawing until replacements land */
+      const prevPlanets = this.planets, prevCore = this.core;
       const dens = this.starDensity;
       const N = Math.round(9000 * dens);
       const st = new Float32Array(N * 4);
@@ -196,7 +238,11 @@
         { u: .59, r: .57, kind: 'fissure' },
         { u: .82, r: .33, kind: 'ice' }
       ].map(o => { const p = this.helix(o.u, this.RAD * 1.02); return Object.assign(o, { x: p[0], y: p[1], z: p[2] }); });
-      this.planets.forEach(p => { p.sprite = this.makeSprite(p.kind); });
+      /* POLISH (Job A): planet sprites defer to after first paint — boot
+         cost is the core alone, which the veil covers. On a rebuild the
+         previous generation's canvases keep drawing until the deferred
+         replacements land (positions and kinds are deterministic). */
+      this.planets.forEach((p, i) => { p.sprite = (prevPlanets && prevPlanets[i] && prevPlanets[i].sprite) || null; });
 
       // asteroids, thickest around the fissured planet (the factory's ventures)
       const A = 138, ast = [];
@@ -212,7 +258,16 @@
       this.asteroids = ast;
 
       this.core = { x: 0, y: this.TOP + 2.6, z: 0, r: 2.15, kind: 'core' };
-      this.core.sprite = this.makeSprite('core');
+      if (prevCore && prevCore.sprite) {
+        /* width-class rebuild, mid-scene: keep the old core visible and
+           re-shade it through the same row-chunk path — a synchronous
+           1280px render would freeze the resize handler for ~100-300 ms */
+        this.core.sprite = prevCore.sprite;
+        this.deferSprites([this.core].concat(this.planets));
+      } else {
+        this.core.sprite = this.makeSprite('core'); // first build: veiled
+        this.deferSprites(this.planets);
+      }
       this.ring = { y: this.BOT - 1.4, r: 2.15 };
       this.grain = this.makeGrain();
       this.buildKeys();
@@ -229,11 +284,50 @@
       const d = Math.hypot(x - px, y - py);
       return { d, id: rx * 73.1 + rz * 191.7 };
     }
+    /* POLISH (Job A): sprites render at high resolution. The core renders
+       first and synchronously — it is the first thing seen and the veil
+       holds until the first frame — while the four planets defer to after
+       first paint, rendered in ~6 ms row chunks so nothing hitches. */
+    spriteSize(kind) {
+      const mobile = innerWidth < 768;
+      return kind === 'core' ? (mobile ? 768 : 1280) : (mobile ? 512 : 768);
+    }
     makeSprite(kind) {
-      const S = 384, R = S * 0.34, C = S / 2;
+      const S = this.spriteSize(kind);
       const scv = document.createElement('canvas'); scv.width = scv.height = S;
       const ct = scv.getContext('2d');
-      const img = ct.createImageData(S, S), d = img.data;
+      const img = ct.createImageData(S, S);
+      this.renderSpriteRows(img.data, kind, S, 0, S);
+      ct.putImageData(img, 0, 0);
+      return scv;
+    }
+    deferSprites(list) {
+      const gen = this.sgen;
+      const jobs = list.map(pl => {
+        const S = this.spriteSize(pl.kind);
+        const scv = document.createElement('canvas'); scv.width = scv.height = S;
+        const ct = scv.getContext('2d');
+        return { pl, S, scv, ct, img: ct.createImageData(S, S), y: 0 };
+      });
+      const step = () => {
+        if (gen !== this.sgen) return; // scene rebuilt underneath — abandon
+        const j = jobs[0]; if (!j) return;
+        const t0 = performance.now();
+        /* 4-row slices: the budget check runs between slices, so the slice
+           itself must stay well under a frame even on the heavy fbm kinds
+           (a 16-row fissure slice alone measured ~7 ms on a fast desktop) */
+        while (j.y < j.S && performance.now() - t0 < 5) {
+          const y1 = Math.min(j.S, j.y + 4);
+          this.renderSpriteRows(j.img.data, j.pl.kind, j.S, j.y, y1);
+          j.y = y1;
+        }
+        if (j.y >= j.S) { j.ct.putImageData(j.img, 0, 0); j.pl.sprite = j.scv; jobs.shift(); }
+        if (jobs.length) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+    renderSpriteRows(d, kind, S, y0, y1) {
+      const R = S * 0.34, C = S / 2;
       const Lx = -.52, Ly = .46, Lz = .72;
       const rl = 1 / Math.hypot(Lx, Ly, Lz);
       const lx = Lx * rl, ly = Ly * rl, lz = Lz * rl;
@@ -241,9 +335,9 @@
       const bx = kind === 'core' ? -.50 : -.82, by = kind === 'core' ? .16 : .22, bz = kind === 'core' ? -.86 : -.52, bl = 1 / Math.hypot(bx, by, bz);
       const rx = bx * bl, ry = by * bl, rz2 = bz * bl;
       const keyMul = kind === 'ice' ? .5 : kind === 'core' ? .35 : 1;
-      const rimK = kind === 'core' ? 8.5 : kind === 'clouds' ? 1.5 : 1.9;
-      const rimP = kind === 'core' ? 3.4 : 5.0;
-      for (let py = 0; py < S; py++) {
+      const rimK = kind === 'core' ? 10.5 : kind === 'clouds' ? 1.5 : 1.9;
+      const rimP = kind === 'core' ? 2.4 : 5.0;
+      for (let py = y0; py < y1; py++) {
         for (let px = 0; px < S; px++) {
           const i = (py * S + px) * 4;
           const nx = (px + .5 - C) / R, nyS = (py + .5 - C) / R;
@@ -258,6 +352,22 @@
                 const g = Math.pow(a, 2.1) * (0.16 + lit * 0.72);
                 d[i] = 150; d[i + 1] = 185; d[i + 2] = 255; d[i + 3] = Math.min(255, g * 200);
               }
+            } else if (kind === 'core') {
+              /* POLISH: baked two-layer halo hugging the lit limb — the
+                 crescent's bloom in the reference plate (CI/Landing.png) */
+              const dd = Math.sqrt(d2);
+              if (dd < 1.42) {
+                const dirDot = Math.max(0, (nx / dd) * rx + (ny / dd) * ry);
+                const lit = 0.06 + 0.94 * Math.pow(dirDot, 1.7);
+                const tight = Math.pow(Math.max(0, 1 - (dd - 1) / 0.10), 2.4);
+                const wide = Math.pow(Math.max(0, 1 - (dd - 1) / 0.34), 2.6);
+                const a = (tight * 0.85 + wide * 0.22) * lit;
+                if (a > 0.003) {
+                  const wt = Math.min(1, tight * 1.2);
+                  d[i] = 98 + 136 * wt; d[i + 1] = 152 + 94 * wt; d[i + 2] = 255;
+                  d[i + 3] = Math.min(255, a * 255);
+                }
+              }
             }
             continue;
           }
@@ -265,15 +375,21 @@
           let sx = nx, sy = ny, sz = nz;
           const lat = Math.asin(Math.max(-1, Math.min(1, sy)));
           const lon = Math.atan2(sx, sz);
-          let alb = [.10, .12, .16], emR = 0, emG = 0, emB = 0, bump = 0, spec = 0;
+          let alb = [.10, .12, .16], emR = 0, emG = 0, emB = 0, bump = 0, spec = 0, seamV = 0;
           if (kind === 'basalt' || kind === 'core') {
-            const sc = kind === 'core' ? 13 : 17;
+            /* POLISH: the core's hex grid runs finer than the reference's
+               13 (now matching basalt's 17) and its seams narrower — the
+               reference plate reads ~2x the facet count with crisp edges */
+            const sc = 17;
             const hx = lon / Math.PI * sc, hy = lat / Math.PI * sc;
             const f = this.hexFacet(hx, hy);
-            const seam = Math.min(1, Math.max(0, (f.d - .72) / .28));
+            const seam = kind === 'core'
+              ? Math.min(1, Math.max(0, (f.d - .78) / .22))
+              : Math.min(1, Math.max(0, (f.d - .72) / .28));
+            seamV = seam;
             bump = (this.h3(f.id, 3.1, 7.7) - .5) * .30;
             const base = kind === 'core' ? .030 : .075;
-            const g = base + this.h3(f.id, 1.7, 9.3) * (kind === 'core' ? .022 : .035);
+            const g = base + this.h3(f.id, 1.7, 9.3) * (kind === 'core' ? .026 : .035);
             const shade = 1 - seam * .55;
             alb = [g * .82 * shade, g * .92 * shade, g * 1.30 * shade];
             spec = (1 - seam) * (kind === 'core' ? .05 : .10);
@@ -301,11 +417,29 @@
           const ml = 1 / Math.hypot(mx, my, mz); mx *= ml; my *= ml; mz *= ml;
           let lam = Math.max(0, mx * lx + my * ly + mz * lz);
           lam = Math.pow(lam, 1.15) * keyMul;
-          const rim = Math.pow(1 - nz, rimP) * Math.max(0, sx * rx + sy * ry + sz * rz2) * rimK;
+          /* POLISH: the core's rim reads the BUMPED normal, so the hex
+             relief cuts visibly into the crescent (the reference plate shows
+             facets silhouetted against the limb light); seams near the
+             terminator catch the rim light, and a tight second rim layer
+             blows the limb toward white */
+          const rimDotG = Math.max(0, sx * rx + sy * ry + sz * rz2);
+          const rimDot = kind === 'core'
+            ? Math.max(0, rimDotG * 0.55 + (mx * rx + my * ry + mz * rz2) * 0.45)
+            : rimDotG;
+          const rim = Math.pow(1 - nz, rimP) * rimDot * rimK;
+          const rimHot = kind === 'core' ? Math.pow(1 - nz, 8.5) * Math.pow(rimDot, 1.4) * 34 * (1 - seamV * 0.38) : 0;
+          /* seam light falls off LATERALLY from the lit limb (the rim dot
+             itself dies with nz — its z term dominates — and would confine
+             the seams to the blaze itself) */
+          const seamDir = Math.max(0, sx * rx + sy * ry);
+          const seamLit = kind === 'core' ? seamV * Math.pow(seamDir, 1.6) * Math.pow(1 - nz, 0.7) * 3.2 : 0;
           const amb = 0.030;
-          let r = alb[0] * (lam * 1.85 + amb) + emR + rim * 0.72 + spec * Math.pow(lam, 22) * .9;
-          let g = alb[1] * (lam * 1.92 + amb * 1.15) + emG + rim * 0.85 + spec * Math.pow(lam, 22);
-          let b = alb[2] * (lam * 2.05 + amb * 1.6) + emB + rim * 1.05 + spec * Math.pow(lam, 22) * 1.1;
+          /* POLISH: the core's wide rim layer leans electric blue — white
+             lives only in the tight rimHot line (reference: Landing.png) */
+          const rtR = kind === 'core' ? .48 : .72, rtG = kind === 'core' ? .70 : .85, rtB = kind === 'core' ? 1.12 : 1.05;
+          let r = alb[0] * (lam * 1.85 + amb) + emR + rim * rtR + rimHot * 0.95 + seamLit * 0.60 + spec * Math.pow(lam, 22) * .9;
+          let g = alb[1] * (lam * 1.92 + amb * 1.15) + emG + rim * rtG + rimHot * 1.0 + seamLit * 0.76 + spec * Math.pow(lam, 22);
+          let b = alb[2] * (lam * 2.05 + amb * 1.6) + emB + rim * rtB + rimHot * 1.02 + seamLit * 1.05 + spec * Math.pow(lam, 22) * 1.1;
           const dd = Math.sqrt(d2);
           const aa = Math.min(1, (1 - dd) * R);
           d[i] = Math.min(255, Math.pow(Math.max(0, r), .85) * 255);
@@ -314,8 +448,6 @@
           d[i + 3] = Math.max(0, aa) * 255;
         }
       }
-      ct.putImageData(img, 0, 0);
-      return scv;
     }
 
     makeGrain() {
@@ -345,6 +477,9 @@
       cv.width = Math.max(1, Math.round(cw * dpr));
       cv.height = Math.max(1, Math.round(chh * dpr));
       this.W = cv.width; this.H = cv.height; this.dpr = dpr;
+      /* POLISH: canvas realloc resets context state — re-assert quality */
+      this.ctx.imageSmoothingEnabled = true;
+      this.ctx.imageSmoothingQuality = 'high';
       const dens = cw < 768 ? 0.55 : 1;
       if (dens !== this.starDensity) {
         this.starDensity = dens;
@@ -387,9 +522,22 @@
         [0, this.core.y + 0.1, 0],
       ].concat(this.planets.map(pl => [pl.x, pl.y, pl.z]))
        .concat([[0, this.ring.y + 0.1, 0]]);
-      const si = Math.max(0, Math.min(6, Math.round(f)));
-      const w = Math.max(0, 1 - Math.abs(f - si) * 1.7) * (si === 0 ? 1 : si === 1 ? 0.5 : 0.62);
-      if (w > 0) tgt = tgt.map((x, j) => x + (feats[si][j] - x) * w);
+      /* crossfade between CONSECUTIVE features so the featured-body weight
+         never collapses mid-seam — the gaze hands from one body to the next
+         in a single move instead of dipping to the path default and back
+         (that dip threw every body out of frame and back in). Weights:
+         hero holds the core dead-on (1), the manifesto keeps half an eye on
+         it (0.5), the worlds hold at 0.78. */
+      const i0 = Math.min(5, Math.floor(f)), i1 = i0 + 1;
+      const tt = Math.min(1, Math.max(0, f - i0));
+      /* the hand-off completes at 80% of the seam — the eye's own helix
+         rotation peaks mid-seam, and the aim must already own the next body
+         by then or the rotation whips it out of frame before acquisition */
+      const t8 = Math.min(1, tt / 0.8);
+      const e2 = t8 * t8 * (3 - 2 * t8);
+      const WS = (idx) => (idx === 0 ? 1 : idx === 1 ? 0.5 : 0.78);
+      const wA = WS(i0) * (1 - e2), wB = WS(i1) * e2;
+      tgt = tgt.map((x, j) => x * (1 - wA - wB) + feats[i0][j] * wA + feats[i1][j] * wB);
       if (f > 6) { // the finale: swing out and see the whole formation
         const q = f - 6;
         const k = q * q * (3 - 2 * q);
@@ -488,11 +636,27 @@
         return [cx + foc * vx / vz, cy - foc * vy / vz, vz];
       };
 
+      /* POLISH: emergence fade — each body draws only around its own beat
+         (+-1.2 sections, 0.35 ramp). The portrait lens is wide enough to
+         catch bodies far up and down the stream (the ring peeked over the
+         bottom edge two sections early, a passed world's sliver clipped the
+         top corner), and every such early peek is an exit-and-re-enter
+         violation. The finale pull-back reveals everything, so it lerps the
+         fade back to full. The core is exempt below: it OWNS sections 0-1
+         and its long goodbye down the stream is the design. */
+      const fR = Math.max(0, Math.min(7, p * 7));
+      const finQ = Math.max(0, fR - 6);
+      const finK = finQ * finQ * (3 - 2 * finQ);
+      const bodyA = (sec) => {
+        const dist = sec === 0 ? Math.max(0, fR - 1) : Math.abs(fR - sec);
+        return Math.max(clamp((1.2 - dist) / 0.35, 0, 1), finK);
+      };
+
       // big objects sorted far -> near
       const objs = [];
-      this.planets.forEach(pl => { const s = proj(pl.x, pl.y, pl.z); if (s) objs.push({ t: 'p', o: pl, s }); });
-      { const s = proj(this.core.x, this.core.y, this.core.z); if (s) objs.push({ t: 'core', s }); }
-      { const s = proj(0, this.ring.y, 0); if (s) objs.push({ t: 'ring', s }); }
+      this.planets.forEach((pl, pi) => { const s = proj(pl.x, pl.y, pl.z); if (s) objs.push({ t: 'p', o: pl, s, a: bodyA(pi + 2) }); });
+      { const s = proj(this.core.x, this.core.y, this.core.z); if (s) objs.push({ t: 'core', s, a: 1 }); }
+      { const s = proj(0, this.ring.y, 0); if (s) objs.push({ t: 'ring', s, a: bodyA(6) }); }
       objs.sort((a, b) => b.s[2] - a.s[2]);
       const depths = objs.map(o => o.s[2]);
       const buckets = []; for (let i = 0; i <= objs.length; i++) buckets.push([]);
@@ -577,9 +741,12 @@
         drawDust(dbk[b]); drawStars(buckets[b]); drawAst(abk[b]);
         if (b < objs.length) {
           const o = objs[b];
+          if (o.a < 0.01) continue; // not this body's beat yet (or already past)
+          ctx.globalAlpha = o.a;
           if (o.t === 'p') this.drawPlanet(ctx, o.o, o.s, foc);
           else if (o.t === 'core') this.drawCore(ctx, o.s, foc);
           else this.drawRing(ctx, proj, foc);
+          ctx.globalAlpha = 1;
         }
       }
 
@@ -640,6 +807,7 @@
 
     trueDist(o) { const e = this.eyeP; return Math.max(0.2, Math.hypot(o.x - e[0], o.y - e[1], o.z - e[2])); }
     drawPlanet(ctx, pl, s, foc) {
+      if (!pl.sprite) return; // still rendering in the deferred queue
       const r = foc * pl.r / this.trueDist(pl);
       if (r < .4) return;
       ctx.globalCompositeOperation = 'lighter';
@@ -658,18 +826,43 @@
       const r = foc * this.core.r / this.trueDist(this.core);
       if (r < .5) return;
       ctx.globalCompositeOperation = 'lighter';
-      // concentric shells behind the sphere, as in the reference plate
+      /* POLISH: concentric shells live on the GLOW side, as in the reference
+         plate — alpha falls off with angle from the light. Conic gradients
+         where supported; the old uniform rings as the fallback. */
       ctx.lineWidth = Math.max(.5, r * .012);
+      let arcG = null;
+      if (ctx.createConicGradient) {
+        const la = Math.atan2(-.10, -.34); // screen-space light direction
+        arcG = ctx.createConicGradient(la, s[0], s[1]);
+        const HW = 2.27; // rad — arcs die out ~130° off the light
+        for (let i = 0; i <= 24; i++) {
+          const t = i / 24;
+          const ang = Math.min(t, 1 - t) * 6.2832;
+          const aa = Math.pow(Math.cos(Math.min(1, ang / HW) * Math.PI / 2), 1.6);
+          arcG.addColorStop(t, 'rgba(150,186,248,' + aa.toFixed(3) + ')');
+        }
+      }
       for (let k = 1; k <= 8; k++) {
         const rr = r * (1.0 + k * 0.135);
-        ctx.strokeStyle = 'rgba(150,186,248,' + (0.085 / (1 + k * 0.55)).toFixed(4) + ')';
+        const base = (arcG ? 0.16 : 0.085) / (1 + k * (arcG ? 0.42 : 0.55));
+        if (arcG) { ctx.globalAlpha = base; ctx.strokeStyle = arcG; }
+        else ctx.strokeStyle = 'rgba(150,186,248,' + base.toFixed(4) + ')';
         ctx.beginPath(); ctx.arc(s[0], s[1], rr, 0, 6.2832); ctx.stroke();
       }
+      ctx.globalAlpha = 1;
+      /* POLISH: two-layer bloom — a tight, near-white sheet hugging the
+         crescent, then the wide electric-blue atmosphere */
+      const tx = s[0] - r * .30, ty = s[1] - r * .09;
+      let g = ctx.createRadialGradient(tx, ty, r * .84, tx, ty, r * 1.38);
+      g.addColorStop(0, 'rgba(170,208,255,.28)');
+      g.addColorStop(.4, 'rgba(112,168,255,.11)');
+      g.addColorStop(1, 'rgba(84,138,240,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(tx, ty, r * 1.38, 0, 6.2832); ctx.fill();
       const bx = s[0] - r * .34, by = s[1] - r * .10;
-      const g = ctx.createRadialGradient(bx, by, r * .80, bx, by, r * 2.7);
-      g.addColorStop(0, 'rgba(176,206,255,.40)');
-      g.addColorStop(.20, 'rgba(124,166,242,.13)');
-      g.addColorStop(1, 'rgba(80,120,210,0)');
+      g = ctx.createRadialGradient(bx, by, r * .80, bx, by, r * 2.7);
+      g.addColorStop(0, 'rgba(126,176,255,.46)');
+      g.addColorStop(.20, 'rgba(88,140,245,.17)');
+      g.addColorStop(1, 'rgba(58,100,200,0)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bx, by, r * 2.7, 0, 6.2832); ctx.fill();
       ctx.globalCompositeOperation = 'source-over';
       const d = r / 0.68;
