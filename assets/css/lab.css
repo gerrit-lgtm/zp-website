@@ -1,0 +1,166 @@
+/* ZeroPoint — real-time build overrides. Loaded AFTER site.css.
+   Two jobs:
+   1. Restack the page so WebGL can sandwich the DOM (occlusion).
+   2. Kill the permanent full-page scrim and replace it with LOCAL legibility,
+      so copy reads as typography positioned inside a scene rather than a text
+      panel pasted over a video. */
+
+/* The local-legibility washes below bleed horizontally past the copy column.
+   Without this, Chrome on a 390px phone widens the LAYOUT viewport to fit them
+   (innerWidth reported 444) and silently zooms the whole page out — which is
+   what pushed the "Talk to us" button off the right edge. `clip` rather than
+   `hidden` so it never creates a scroll container. */
+html, body.lab { overflow-x: clip; }
+
+/* ------------------------------------------------------------ the sandwich */
+#bg-gl {                      /* z 0 · environment, core, particles */
+  position: fixed; inset: 0; z-index: 0;
+  display: block; width: 100%; height: 100%;
+}
+main { position: relative; z-index: 10; }   /* z 10 · semantic HTML */
+#fg-gl {                      /* z 20 · near ring — renders ON TOP of the copy */
+  position: fixed; inset: 0; z-index: 20;
+  display: block; width: 100%; height: 100%;
+  pointer-events: none;       /* the DOM under it must stay clickable */
+}
+footer { z-index: 10; }
+.chrome { z-index: 40; }      /* z 40 · nav + essential controls */
+
+/* Deep space, never pure black (CI). The GL canvas is alpha, so this shows
+   through as the environment — one less thing to render. */
+body.lab {
+  background:
+    radial-gradient(120% 90% at 72% 34%, #223250 0%, #192231 44%, #0d1219 100%) fixed;
+}
+
+/* Static fallback only — the 2.4MB poster is only fetched if GL is actually
+   off, so the real-time path costs nothing for it. */
+body.lab #poster {
+  z-index: 0; opacity: 0;
+  background-size: cover; background-position: 68% center;
+}
+body.lab.no-gl #poster {
+  opacity: 1;
+  background-image: url("../img/poster-k0.png");
+}
+body.lab.no-gl #bg-gl,
+body.lab.no-gl #fg-gl { display: none; }
+
+/* ------------------------------------------------- local legibility, not a scrim
+   A soft directional wash bound to the copy column itself. It travels with the
+   text, so the right two-thirds of the scene stays completely clear. */
+.lab .col,
+.lab .manifesto,
+.lab #team .panel,
+.lab #arrival .panel { position: relative; }
+
+.lab .col::before,
+.lab .manifesto::before,
+.lab #team .panel::before,
+.lab #arrival .panel::before {
+  content: "";
+  position: absolute;
+  inset: -14vh -26vw -14vh -34vw;
+  background: radial-gradient(60% 50% at 34% 50%,
+              rgba(13, 18, 25, 0.88) 0%,
+              rgba(13, 18, 25, 0.62) 42%,
+              rgba(13, 18, 25, 0) 74%);
+  z-index: -1;
+  pointer-events: none;
+}
+.lab #team .panel::before,
+.lab #arrival .panel::before {
+  background: radial-gradient(70% 58% at 50% 50%,
+              rgba(13, 18, 25, 0.86) 0%,
+              rgba(13, 18, 25, 0.55) 48%,
+              rgba(13, 18, 25, 0) 78%);
+}
+
+/* ---------------------------------------------------------- beat pacing
+   Frame-budget no longer sets section height — the scene is parametric, so
+   length is purely a reading-time decision. Shorter than the scrub build. */
+.lab #departure { min-height: 130vh; }
+.lab .world { min-height: 150vh; }
+.lab #w-consulting, .lab #w-factory { min-height: 170vh; }
+.lab #team { min-height: 130vh; }
+/* The mark resolves dead-centre and full-height here, so the statement gets
+   the first screen to itself and the form arrives on the second — rather than
+   a centred form parked on top of the logo the whole journey built toward. */
+.lab #arrival { min-height: 190vh; align-items: flex-start; padding-top: 26vh; }
+.lab #arrival #contact { margin-top: 34vh; }
+
+/* World 02 sits lower in the frame so the three worlds don't stamp out the
+   same composition three times. Offset, NOT bottom-anchored: flex-end pushed
+   the copy to ~p=0.46 of the section, so it arrived mid-transition and read
+   against the next beat's composition instead of its own. */
+.lab .world.low { padding-top: 30vh; }
+
+/* -------------------------------------------------------------- spec lists
+   Replaces the generic chip row: each line names something the object is
+   actually doing on screen, so copy and scene corroborate each other. */
+.lab .spec { list-style: none; margin: 26px 0 32px; padding: 0; max-width: 520px; }
+.lab .spec li {
+  display: grid; grid-template-columns: minmax(0, 15ch) 1fr; gap: 18px;
+  padding: 13px 0; border-top: 1px solid rgba(244, 244, 240, 0.10);
+  align-items: baseline;
+}
+.lab .spec li:last-child { border-bottom: 1px solid rgba(244, 244, 240, 0.10); }
+.lab .spec b { color: var(--white); font-weight: 600; font-size: var(--fs-sm); letter-spacing: 0.01em; }
+.lab .spec span { color: var(--ink-dim); font-size: var(--fs-sm); line-height: 1.5; }
+
+/* World 03: the four names here ARE the four module rings separating in 3D. */
+.lab .col.wide { max-width: 760px; }
+.lab .layers { list-style: none; margin: 28px 0 32px; padding: 0;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.lab .layers li {
+  border: 1px solid rgba(244, 244, 240, 0.12); border-radius: var(--radius);
+  padding: 16px 18px; background: rgba(25, 34, 49, 0.42);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.lab .layers em {
+  display: block; font-style: normal; font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 800; font-size: var(--fs-xs); letter-spacing: 0.2em; color: var(--blue);
+  margin-bottom: 8px;
+}
+.lab .layers b { display: block; color: var(--white); font-weight: 600; margin-bottom: 4px; }
+.lab .layers span { color: var(--ink-dim); font-size: var(--fs-sm); line-height: 1.5; }
+
+/* World index line — was inline-styled on the team section in the scrub build. */
+.lab .idx {
+  font-family: "Plus Jakarta Sans", sans-serif; font-weight: 800;
+  font-size: var(--fs-xs); letter-spacing: 0.2em; color: var(--blue); margin: 0 0 18px;
+}
+.lab .tbc { margin-top: 18px; }
+
+/* --------------------------------------------------------------- arrival
+   The 3D aperture is the logo, centred and full-height behind this block, so
+   the form gets a real material panel to sit on rather than fighting it. */
+.lab #arrival #contact {
+  background: rgba(18, 25, 36, 0.62);
+  border: 1px solid rgba(244, 244, 240, 0.10);
+  border-radius: 16px; padding: 28px;
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+}
+
+/* ------------------------------------------------------------- responsive */
+@media (max-width: 768px) {
+  .lab .layers { grid-template-columns: 1fr; }
+  .lab .spec li { grid-template-columns: 1fr; gap: 4px; }
+  .lab .col::before,
+  .lab .manifesto::before,
+  .lab #team .panel::before,
+  .lab #arrival .panel::before {
+    inset: -8vh 0;   /* no horizontal bleed — see the viewport note at the top */
+    /* radial, so it fades out on every edge; a linear wash left visible
+       rectangular seams down both sides of the copy on a phone */
+    background: radial-gradient(88% 62% at 50% 52%,
+      rgba(13, 18, 25, 0.92) 0%, rgba(13, 18, 25, 0.74) 46%, rgba(13, 18, 25, 0) 100%);
+  }
+  .lab .world.low { align-items: center; padding-bottom: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.lab #poster { opacity: 1; }
+  body.lab #bg-gl, body.lab #fg-gl { display: none; }
+}

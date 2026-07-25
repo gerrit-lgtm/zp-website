@@ -1,5 +1,25 @@
 # STATUS — where we are, what's next
-*Updated 24 Jul 2026 (evening). Read PLAN.md for the locked spec, LEARNINGS.md for context, **prompts/HELIX-V2.md for the current generation spec** (WORKFLOW.md + 3clip-prompts.md are superseded).*
+*Updated 25 Jul 2026. Read PLAN.md for the locked spec, LEARNINGS.md for context, **prompts/HELIX-V2.md for the current generation spec** (WORKFLOW.md + 3clip-prompts.md are superseded).*
+
+## ⚠️ Real-time branch open: `immersive-3d` (25 Jul)
+
+`lab.html` is a **working Three.js prototype** that replaces the frame-scrub stage
+with one persistent, interactive Sovereign Core. It does not touch `index.html`
+— both run side by side for A/B. Phase 1 of the immersion rebuild is **done and
+verified in-browser**; Phases 2–4 are not started.
+
+- `lab.html` · `assets/js/zp-core.js` (scene) · `assets/js/zp-ui.js` (DOM) · `assets/css/lab.css`
+- Three.js via ESM importmap — **no build step**, same static upload as today.
+- 460KB total transfer vs **78MB** of WebP frames. 120fps under software rendering.
+- Occlusion is real: two canvases sandwich the DOM (bg z0 · copy z10 · fg z20)
+  driven by ONE shared camera, so the departure ring passes in front of the H1.
+- Frames in `assets/frames/` are untouched and still power `index.html`.
+
+**Decision needed before Phase 2:** HELIX-V2's exponential pullback (R₄/R₀ ≈ 40,
+subject ending at ~1.5% of frame) and "one persistent protagonist" are mutually
+exclusive. The prototype resolves it in favour of the protagonist — orbit,
+descent and the composition bias survive; the 40× pullback does not. Confirm or
+overrule before any more footage is generated.
 
 ## HELIX v2 (24 Jul, evening) — the redo
 

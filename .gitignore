@@ -1,2 +1,5 @@
 .vercel
 .env*
+.DS_Store
+# macOS custom-folder icons (filename is literally Icon+CR)
+Icon?

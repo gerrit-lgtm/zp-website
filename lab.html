@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZeroPoint — Sovereign Core (real-time prototype)</title>
+<meta name="description" content="ZeroPoint — sovereign, secure and scalable AI. Real-time WebGL prototype: one persistent Sovereign Core, one continuous camera journey.">
+<meta name="theme-color" content="#192231">
+<meta name="robots" content="noindex">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/css/lab.css">
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+</head>
+<body class="lab">
+
+<div id="veil"><div class="spin"></div></div>
+
+<!-- z 0 · background WebGL: core, lattice, particles, starfield -->
+<canvas id="bg-gl"></canvas>
+<!-- static fallback for reduced-motion / no-WebGL -->
+<div id="poster"></div>
+
+<!-- chrome -->
+<div id="progress" class="chrome"><div class="fill"></div></div>
+<a id="brand" class="chrome" href="#hero" aria-label="ZeroPoint home">
+  <span class="mark"><img src="assets/logo/mark.svg" alt=""></span>
+  <span class="wordmark">ZEROPOINT</span>
+</a>
+<a id="talk" class="chrome btn btn-primary" href="#contact">Talk to us</a>
+<nav id="dots" class="chrome" aria-label="Sections"></nav>
+
+<!-- z 10 · semantic HTML -->
+<main>
+
+  <!-- HERO · the sealed core -->
+  <section class="beat" id="hero" data-beat="hero" data-label="Home">
+    <div class="panel"><div class="col">
+      <p class="eyebrow reveal">The point where value begins</p>
+      <h1 class="reveal">Sovereign AI.<br>Real business&nbsp;<span class="em">value.</span></h1>
+      <p class="lead reveal">Secure, sovereign and scalable — engineered to transform how business creates value.</p>
+      <div class="cta-row reveal">
+        <a class="btn btn-primary" href="#departure">Begin the journey</a>
+        <a class="btn btn-ghost" href="#contact">Talk to us</a>
+      </div>
+    </div></div>
+    <div class="scroll-cue"><i></i> Scroll to descend</div>
+  </section>
+
+  <!-- DEPARTURE · crossing the boundary -->
+  <section class="beat" id="departure" data-beat="departure" data-label="Departure">
+    <div class="panel"><div class="manifesto">
+      <p class="reveal">Everything begins from a point.</p>
+      <p class="reveal">A point becomes a decision.</p>
+      <p class="reveal">A decision becomes direction.</p>
+      <p class="reveal">Direction creates momentum.</p>
+      <p class="reveal">Momentum creates value.</p>
+    </div></div>
+  </section>
+
+  <!-- WORLD 01 · Sovereign infrastructure — the shell locks -->
+  <section class="beat world" id="w-enterprise" data-beat="sovereign" data-label="Enterprise">
+    <div class="panel"><div class="col">
+      <p class="idx reveal">World 01 · Enterprise Technology</p>
+      <h2 class="reveal">Sovereign infrastructure, engineered for impact.</h2>
+      <!-- labels name what the object is DOING, so copy and scene agree -->
+      <ul class="spec">
+        <li class="reveal"><b>Containment</b><span>Data stays inside the boundary. Nothing leaves.</span></li>
+        <li class="reveal"><b>Isolation</b><span>External traffic deflects at the shell.</span></li>
+        <li class="reveal"><b>Attestation</b><span>The boundary scans itself, continuously.</span></li>
+      </ul>
+      <a class="btn btn-ghost reveal" href="#contact">Explore Enterprise Technology</a>
+    </div></div>
+  </section>
+
+  <!-- WORLD 02 · Signal — noise resolves into a path -->
+  <section class="beat world low" id="w-consulting" data-beat="signal" data-label="Consulting &amp; Media">
+    <div class="panel"><div class="col">
+      <p class="idx reveal">World 02 · Consulting &amp; Media</p>
+      <h2 class="reveal">Clarity before code.</h2>
+      <p class="lead reveal">Scattered signal becomes a single path — that is the work, before a line is written.</p>
+      <ul class="spec">
+        <li class="reveal"><b>AI strategy &amp; advisory</b><span>Where value actually is, and is not.</span></li>
+        <li class="reveal"><b>Executive enablement</b><span>Decisions your board can defend.</span></li>
+        <li class="reveal"><b>Media &amp; storytelling</b><span>The narrative that carries it.</span></li>
+      </ul>
+      <a class="btn btn-ghost reveal" href="#contact">Explore Consulting &amp; Media</a>
+    </div></div>
+  </section>
+
+  <!-- WORLD 03 · AI Factory — the core separates into four layers -->
+  <section class="beat world" id="w-factory" data-beat="factory" data-label="AI Factory">
+    <div class="panel"><div class="col wide">
+      <p class="idx reveal">World 03 · The AI Factory</p>
+      <h2 class="reveal">Build with us. Own what you build.</h2>
+      <!-- these four names are the four module rings separating in the scene -->
+      <ol class="layers">
+        <li class="reveal"><em>01</em><b>Compute</b><span>Sovereign hardware, yours to run.</span></li>
+        <li class="reveal"><em>02</em><b>Deployment</b><span>Air-gapped or connected — your call.</span></li>
+        <li class="reveal"><em>03</em><b>Software</b><span>Built in the open, shipped to production.</span></li>
+        <li class="reveal"><em>04</em><b>Data</b><span>Never leaves. Never trains someone else's model.</span></li>
+      </ol>
+      <a class="btn btn-ghost reveal" href="#contact">Explore the AI Factory</a>
+    </div></div>
+  </section>
+
+  <!-- WORLD 04 · Team — the network resolves into people -->
+  <section class="beat" id="team" data-beat="team" data-label="The Team">
+    <div class="panel">
+      <p class="idx reveal">World 04 · The Team</p>
+      <h2 class="reveal">The people at zero point.</h2>
+      <p class="lead reveal">A small team of engineers, strategists and builders.</p>
+      <div class="grid-team">
+        <div class="member reveal"><div class="avatar">Z</div><div class="name">Name TBC</div><div class="role">Founder &amp; CEO</div></div>
+        <div class="member reveal"><div class="avatar">Z</div><div class="name">Name TBC</div><div class="role">Founder</div></div>
+        <div class="member reveal"><div class="avatar">Z</div><div class="name">Name TBC</div><div class="role">Engineering</div></div>
+        <div class="member reveal"><div class="avatar">Z</div><div class="name">Name TBC</div><div class="role">Strategy &amp; Media</div></div>
+      </div>
+      <p class="tbc reveal">Founder names, photos and roles — pending sign-off.</p>
+    </div>
+  </section>
+
+  <!-- ARRIVAL · the mark resolves. No <img> — the 3D aperture IS the logo. -->
+  <section class="beat" id="arrival" data-beat="arrival" data-label="Arrival">
+    <div class="panel">
+      <h2 class="reveal">A single point.<br><span class="em">Infinite potential.</span></h2>
+      <p class="lead reveal">Every journey ends where value begins.</p>
+
+      <form id="contact" class="reveal" novalidate>
+        <div class="field">
+          <label for="c-name">Name</label>
+          <input id="c-name" name="name" type="text" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="c-email">Email</label>
+          <input id="c-email" name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="c-msg">How can we help?</label>
+          <textarea id="c-msg" name="message" required></textarea>
+        </div>
+        <button class="btn btn-primary" type="submit">Talk to an expert</button>
+        <p class="form-note" id="c-note" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>ZeroPoint — Sovereign AI Solution · The point where value begins.</p>
+  <p><a href="#hero">Back to top</a></p>
+</footer>
+
+<!-- z 20 · foreground WebGL: the near ring + fragments that cross IN FRONT of copy -->
+<canvas id="fg-gl"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="assets/js/zp-ui.js"></script>
+<script type="module" src="assets/js/zp-core.js"></script>
+<script>
+  /* If the module never boots (no importmap support, CDN blocked, syntax error)
+     the veil must still lift and the copy must still be readable. */
+  setTimeout(() => {
+    const v = document.getElementById("veil");
+    if (v && !v.classList.contains("hide")) {
+      document.body.classList.add("no-gl");
+      document.querySelectorAll(".reveal").forEach(el => { el.style.opacity = 1; el.style.transform = "none"; });
+      v.classList.add("hide"); setTimeout(() => v.remove(), 900);
+    }
+  }, 5000);
+</script>
+</body>
+</html>
