@@ -9,6 +9,12 @@ with one persistent, interactive Sovereign Core. It does not touch `index.html`
 verified in-browser**; Phases 2–4 are not started.
 
 - `lab.html` · `assets/js/zp-core.js` (scene) · `assets/js/zp-ui.js` (DOM) · `assets/css/lab.css`
+- `worlds.html` · `assets/js/zp-worlds.js` · `assets/css/worlds.css` (25 Jul) — **Gerrit's
+  "The Core" scene ported in**: Canvas-2D descent from the black-hole core down a braided
+  helix past four worlds (= the four business worlds), the origin ring resolves into
+  `mark.svg`, finale reveals the whole formation + contact. 8×100vh beats; no build step,
+  no CDN deps. Three pages now run side by side: index (film) / lab (Three.js core) /
+  worlds (canvas galaxy).
 - Three.js via ESM importmap — **no build step**, same static upload as today.
 - 460KB total transfer vs **78MB** of WebP frames. 120fps under software rendering.
 - Occlusion is real: two canvases sandwich the DOM (bg z0 · copy z10 · fg z20)
