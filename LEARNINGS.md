@@ -28,3 +28,30 @@
 ## The core generation trick (Gerrit's, validated)
 
 Generate the journey as an ASCENT (destination grows ahead — AI video is good at this), play it REVERSED on site. Chain clips with real frames: each clip's start image = previous clip's extracted last frame; pin the two ends with locked stills (Still B bottom, Still A top). Regenerating any middle clip later with its stored start+end PNGs keeps every neighbour pixel-valid — miniature updates forever.
+
+## Camera grammar — SOLVED, 25 Jul 2026 → `tools/CAMERA-GRAMMAR.md`
+
+The descent's camera law ("falls backwards down the outside of the coil, always
+looking BACK UP its own path") **cannot be produced by prompting.** Read
+`tools/CAMERA-GRAMMAR.md` before touching the film or the scene. Short version of
+how it was eventually fixed:
+
+- **Describing the camera move in prose fails.** "Helical stream corkscrewing away"
+  produces a face-on galaxy whirlpool; "looking back up its own path" gets ignored
+  and adds astronauts; "wide empty margin" invents a poster matte. Full table of
+  failure modes is in the grammar file — they cost real credits to find, don't
+  rediscover them.
+- **The canvas engine already implements the grammar correctly**, so it is the
+  structural source of truth. Render each beat from it (hide copy with
+  `visibility:hidden`, never `display:none` — that collapses scroll height and every
+  beat captures the same frame), then **upscale** those frames.
+- **Upscale, don't re-generate.** An upscaler cannot reframe; that is the entire
+  point. Feeding a frame to `images_generate` as a reference keeps the direction but
+  rescales the subject up to 3×, and inter-beat scale consistency is what sells the
+  fall.
+- **Video is priced per second, not per clip.** Two 6s clips cost exactly the same as
+  one 12s clip — so there is never a reason to span two story beats with one clip.
+  Doing so just loses a beat (it is how World 02 went missing on the first cut).
+- Encoding gotchas (one keyframe per clip from Seedance → force `-g 6`; H.264 not
+  VP9 because the file is seeked not played; `python -m http.server` has no Range
+  support so local scrub silently fails) are all in the grammar file too.

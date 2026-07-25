@@ -17,6 +17,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/site.css">
 <link rel="stylesheet" href="assets/css/worlds.css">
+
+<!-- The veil holds until the core has pixels, and the core is a plate. Without
+     this the fetch cannot start until zp-worlds.js has parsed and built the
+     scene; preloading it puts the request in flight with the stylesheets. The
+     four worlds are deliberately NOT preloaded — they are not veil-blocking and
+     would only compete with this one for bandwidth. -->
+<link rel="preload" as="image" href="assets/img/worlds/core.webp" type="image/webp" fetchpriority="high">
 </head>
 <body class="worlds">
 

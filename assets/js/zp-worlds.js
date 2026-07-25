@@ -105,7 +105,67 @@
       scroll order: basalt is ready in ~0.34 s and each world lands well
       before its beat. If a world is ever reordered or the budget tightened,
       re-measure — dropping octaves does NOT help (tried: 1.4%), the cost is
-      resolution, so the knob is spriteSize. */
+      resolution, so the knob is spriteSize.
+   17. POLISH Job E — generated HD plates for worlds 03 and 04. A procedural
+      fbm shader has a ceiling well below a diffusion render, so those two
+      worlds now ship pre-rendered plates (Seedream 4.5, 4K, conditioned on
+      CI/Landing.png) instead of being shaded at runtime. See loadPlates()
+      for the contract and its two caveats. Worlds 01 and 02 are STILL
+      procedural — see below.
+      COST: deferred queue drops 941 -> ~405 ms (only basalt + clouds still
+      render), so plating two worlds more than pays for Job D's 1024px bump.
+      Adds 310 KB of WebP.
+      PLATE AUTHORING, hard-won — a generated render is NOT drop-in:
+      a) The disc must be re-fitted to disc = 0.68 * canvas, centred, or the
+         world draws at the wrong size. Never trust the model's framing.
+      b) The source "black" is NOT zero (JPEG noise ~3-8). A naive luminance
+         alpha therefore leaves faint coverage across the whole square, which
+         composites as a visible RECTANGLE around the planet. Lift the alpha
+         floor above the noise AND apply a radial window that reaches zero
+         before the corners. Verify corner alpha == 0 before shipping; it
+         also cut the ice plate 390 -> 156 KB.
+      WHY ONLY TWO: basalt and clouds could not be generated usably in 12
+      attempts. Seedream will not frame a complete disc with margin on
+      demand (subject-fills-frame bias; pushing harder made it invent
+      floors, borders and second moons) and reverts "banded gas giant" to
+      Jupiter's browns against explicit instruction. images_expand is NOT a
+      fix — it regenerates rather than extends, and destroyed the crescent.
+      If retrying: generate at whatever framing the model likes and re-fit
+      in code, and correct palette in post — do not fight either in prompt.
+   18. POLISH Job F — the CORE is plated, and plate resolution is now chosen by
+      measurement rather than by eye.
+      a) THE MEASUREMENT. tools/measure-draw.mjs wraps ctx.drawImage and reports
+         the largest each body is drawn at full opacity. On a 1440x900 @2x
+         display every body was being BROWSER-upscaled at its own beat: core
+         1.59x, clouds 2.41x, fissure 2.15x, basalt 1.58x, ice 1.24x. "HD plate"
+         was never the same claim as "enough pixels where it counts". The core
+         is now a 2048px plate against a 2038px peak draw — matched. THE OTHER
+         FOUR ARE STILL 1024 AND STILL UPSCALED; re-run the tool before assuming
+         any of them is sharp.
+      b) HOW IT WAS MADE. Job E's own pipeline, which beats generation because
+         an upscaler CANNOT REFRAME: render the sprite (tools/sprite-out.mjs),
+         Magnific creative 2x / subtle / creativity 5 / resemblance 6 / hdr 4,
+         then tools/make-world-plate.py --fitted --size 2048. Measured +19.6%
+         gradient energy in the facet field in-scene, and the drawn silhouette
+         is the same size to 0.6% — the 0.68 contract survived.
+         The script's fit check is RELATIVE to the source sprite now, because
+         find_disc thresholds at luminance 26 and on a body with a near-black
+         limb it latches onto the crescent alone: it calls the known-good engine
+         sprite 0.59-of-canvas and 15% off-centre. Do not trust it absolutely.
+      c) BOOT. makeSprite is gone with its only caller — nothing renders a whole
+         sprite synchronously any more, so there is no blocking work before
+         first paint. The veil now waits on the core HAVING pixels instead
+         (loop()), the core plate is <link rel=preload>ed in worlds.html, and
+         drawCore gained the same !sprite guard drawPlanet always had. Verified
+         with the plate 404ing: the shader takes over and the veil still drops.
+      d) PORTRAIT cy 0.40 -> 0.30. See the note at the projection. The copy was
+         promised the lower third and did not get it; at World 02, 43% of the
+         eyebrow sat on lit cloud at 2.8:1. Now 2% at 5.9:1, invariant unchanged.
+      HARNESSES, all in tools/, all needing `npm i --no-save playwright-core`
+      and the range-capable server: measure-draw (plate sizing), boot-check
+      (veil/console/failed requests), copy-contrast (portrait legibility),
+      scroll-sweep (the enter-once camera invariant), sprite-dump (shader drift),
+      capture-beats (the 7 beats, landscape or portrait, with or without copy). */
 (() => {
   "use strict";
 
@@ -330,10 +390,10 @@
          fissure -> World 03 The AI Factory        (lit from inside — own light)
          ice     -> World 04 The Team              (thin atmosphere of people) */
       this.planets = [
-        { u: .13, r: .42, kind: 'basalt' },
-        { u: .36, r: .64, kind: 'clouds' },
-        { u: .59, r: .57, kind: 'fissure' },
-        { u: .82, r: .33, kind: 'ice' }
+        { u: .13, r: .42, kind: 'basalt', plate: 'assets/img/worlds/basalt.webp' },
+        { u: .36, r: .64, kind: 'clouds', plate: 'assets/img/worlds/clouds.webp' },
+        { u: .59, r: .57, kind: 'fissure', plate: 'assets/img/worlds/fissure.webp' },
+        { u: .82, r: .33, kind: 'ice', plate: 'assets/img/worlds/ice.webp' }
       ].map(o => { const p = this.helix(o.u, this.RAD * 1.02); return Object.assign(o, { x: p[0], y: p[1], z: p[2] }); });
       /* POLISH (Job A): planet sprites defer to after first paint — boot
          cost is the core alone, which the veil covers. On a rebuild the
@@ -354,20 +414,51 @@
       }
       this.asteroids = ast;
 
-      this.core = { x: 0, y: this.TOP + 2.6, z: 0, r: 2.15, kind: 'core' };
-      if (prevCore && prevCore.sprite) {
-        /* width-class rebuild, mid-scene: keep the old core visible and
-           re-shade it through the same row-chunk path — a synchronous
-           1280px render would freeze the resize handler for ~100-300 ms */
-        this.core.sprite = prevCore.sprite;
-        this.deferSprites([this.core].concat(this.planets));
-      } else {
-        this.core.sprite = this.makeSprite('core'); // first build: veiled
-        this.deferSprites(this.planets);
-      }
+      this.core = { x: 0, y: this.TOP + 2.6, z: 0, r: 2.15, kind: 'core',
+                    plate: 'assets/img/worlds/core.webp' };
+      /* Job F: the core is plated too, so the synchronous 1280px shader render
+         that used to happen here — the one thing the veil actually had to wait
+         for — is gone. A width-class rebuild simply carries the existing sprite
+         over, because a plate is resolution-independent and the mobile/desktop
+         sprite split no longer applies to it. deferSprites skips any body whose
+         plate is live, so this call queues the fbm shader ONLY for a body whose
+         plate failed to load. */
+      if (prevCore && prevCore.sprite) this.core.sprite = prevCore.sprite;
+      this.loadPlates();
+      this.deferSprites([this.core].concat(this.planets));
       this.origin = { y: this.BOT - 1.4, r: 2.15 };
       this.grain = this.makeGrain();
       this.buildKeys();
+    }
+
+    /* POLISH Job E — generated HD plates. (Job F: the core is one too.)
+
+       A body can ship a pre-rendered plate instead of the procedural shader.
+       The plate is authored to the SAME contract renderSpriteRows produces —
+       square, disc centred, disc diameter 0.68 of the canvas, alpha cut —
+       so drawPlanet consumes it unchanged. It is loaded straight into
+       pl.sprite, which drawImage accepts as an <img> just as happily as the
+       offscreen canvas the shader builds.
+
+       Two consequences worth knowing:
+       - A plated world skips the fbm queue entirely, so it costs zero
+         deferred render time and appears the moment the file decodes.
+       - The plate bakes its own lighting, which is fine ONLY because the
+         sprite is billboarded and drawn axis-aligned (drawPlanet applies no
+         rotation) — the crescent is screen-space locked either way. If a
+         world is ever rotated or lit dynamically, the plate stops working
+         and the kind must fall back to the shader.
+       The shader stays in place for every kind: a plate that fails to load
+       leaves the procedural sprite in its slot rather than a hole. */
+    loadPlates() {
+      [this.core].concat(this.planets).forEach(pl => {
+        if (!pl.plate) return;
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = () => { pl.sprite = img; };
+        img.onerror = () => { pl.plate = null; this.deferSprites([pl]); }; // fall back to the shader
+        img.src = pl.plate;
+      });
     }
 
     /* ---------- planet sprites ---------- */
@@ -393,18 +484,16 @@
          constraint, not the pixels. */
       return kind === 'core' ? (mobile ? 768 : 1280) : (mobile ? 512 : 1024);
     }
-    makeSprite(kind) {
-      const S = this.spriteSize(kind);
-      const scv = document.createElement('canvas'); scv.width = scv.height = S;
-      const ct = scv.getContext('2d');
-      const img = ct.createImageData(S, S);
-      this.renderSpriteRows(img.data, kind, S, 0, S);
-      ct.putImageData(img, 0, 0);
-      return scv;
-    }
+    /* Job F: makeSprite (the synchronous whole-sprite render) is GONE. Its only
+       caller was the core's pre-first-paint build, and the core is plated now.
+       Every remaining path — including a plate that 404s — goes through
+       deferSprites, which does the same work in row chunks without blocking. */
     deferSprites(list) {
       const gen = this.sgen;
-      const jobs = list.map(pl => {
+      /* Job E: a plated world never enters the fbm queue — its pixels come
+         from the file. This is also why the queue got cheaper, not dearer,
+         despite Job D raising the procedural worlds to 1024. */
+      const jobs = list.filter(pl => !pl.plate).map(pl => {
         const S = this.spriteSize(pl.kind);
         const scv = document.createElement('canvas'); scv.width = scv.height = S;
         const ct = scv.getContext('2d');
@@ -702,7 +791,12 @@
         if (this.railEl) this.railEl.style.opacity = this.p > 0.92 ? '0' : '1';
 
         this.draw(p, t);
-        if (!this.shown) { this.shown = true; dropVeil(); }
+        /* Job F: wait for the core to actually have pixels before revealing.
+           It used to be shaded synchronously, so a first frame always had it;
+           now it decodes from a file and an unguarded reveal would show an
+           empty starfield with the hero body missing. dropVeil's own 5 s
+           failsafe still guarantees nobody is stranded behind the spinner. */
+        if (!this.shown && this.core.sprite) { this.shown = true; dropVeil(); }
       } catch (e) {
         /* one bad frame must never freeze the descent — recover next frame */
         if (!this.warned) { this.warned = true; console.warn('[zp-worlds]', e); }
@@ -745,7 +839,18 @@
       const foc = ((portrait ? Math.min(H, W * 1.25) : H) / 2) / Math.tan(0.40);
       const open = Math.max(0, 1 - p * 7);
       const cx = W * (portrait ? 0.5 : 0.605 + 0.085 * open * open);
-      const cy = H * (portrait ? 0.40 : 0.50); // portrait copy owns the lower third
+      /* Job F: portrait 0.40 -> 0.30. At 0.40 the copy did NOT own the lower
+         third it was promised — the copy block is bottom-anchored, so on the
+         taller beats its eyebrow rides up to ~38% of the frame, and at World 02
+         (the brightest body on the descent) 43% of that label sat on lit cloud
+         at 2.8:1. Raising the camera centre lifts every body clear of the copy
+         instead of dimming the scene to compensate: measured with
+         tools/copy-contrast.mjs, the worst label goes 43% -> 2% on lit ground
+         and 2.8:1 -> 5.9:1, and tools/scroll-sweep.mjs shows the portrait
+         enter-once invariant unchanged (any-visible 1 for every body; the
+         centre-metric 2 on clouds/ice is the pre-existing state in note 13).
+         Landscape is untouched. */
+      const cy = H * (portrait ? 0.30 : 0.50); // portrait copy owns the lower third
       const ex = eye[0], ey = eye[1], ez = eye[2];
       this.eyeP = eye;
 
@@ -962,6 +1067,10 @@
     }
 
     drawCore(ctx, s, foc) {
+      /* Job F: the core's pixels come from a file now, so — exactly as for the
+         worlds — there is a window before it has any. Without this guard the
+         drawImage below throws every frame into loop()'s catch. */
+      if (!this.core.sprite) return;
       const r = foc * this.core.r / this.trueDist(this.core);
       if (r < .5) return;
       ctx.globalCompositeOperation = 'lighter';

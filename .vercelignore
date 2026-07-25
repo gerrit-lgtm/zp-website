@@ -1,5 +1,9 @@
 video-pipeline
 prompts
 previews
+reference
+tools
+node_modules
+.work
 .git
 .DS_Store

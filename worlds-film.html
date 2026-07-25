@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZeroPoint — Four worlds. One core.</title>
+<meta name="description" content="ZeroPoint — sovereign, secure and scalable AI. A descent from the zero point through the four business worlds.">
+<meta name="theme-color" content="#0b1322">
+<meta name="robots" content="noindex">
+
+<meta property="og:title" content="ZeroPoint — Four worlds. One core.">
+<meta property="og:description" content="Sovereign AI. Real business value.">
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/css/worlds.css">
+<link rel="stylesheet" href="assets/css/worlds-film.css">
+</head>
+<body class="worlds worlds-film">
+
+<!-- loading veil -->
+<div id="veil"><div class="spin"></div></div>
+
+<!-- z 0 · the film · z 1 · vignette
+     The poster is the film's own first frame, so a failed or still-loading
+     video degrades to the right image rather than to black. -->
+<video id="film" muted playsinline preload="auto" disablepictureinpicture
+       poster="assets/film/poster.jpg" aria-hidden="true">
+  <!-- H.264 only, deliberately. VP9 encodes ~30% smaller, but this video is
+       SEEKED every frame rather than played, and H.264 has hardware-decode
+       seek on every target device where VP9 often does not. Scrub smoothness
+       is the whole point of this build; the bytes are the cheaper trade. -->
+  <source src="assets/film/descent.mp4" type="video/mp4">
+</video>
+<div id="film-scrim"></div>
+<div id="wash"></div>
+
+<!-- The CI mark is NEVER in the footage — generated video mangles a logo.
+     It composites over the film at the origin beat, vector-crisp. -->
+<div id="mark-overlay" aria-hidden="true"><img src="assets/logo/mark.svg" alt=""></div>
+
+<!-- chrome -->
+<a id="brand" class="chrome" href="#hero" aria-label="ZeroPoint home">
+  <span class="mark"><img src="assets/logo/mark.svg" alt=""></span>
+  <span class="wordmark">ZEROPOINT</span>
+</a>
+<a id="talk" class="chrome btn btn-primary" href="#contact">Talk to us</a>
+<div id="rail" class="chrome" aria-hidden="true">
+  <div class="track"><div class="fill"></div></div>
+  <div class="num">00</div>
+</div>
+
+<main>
+
+  <!-- 0 · THE CORE -->
+  <section class="gsec" data-sec id="hero">
+    <div class="col wide">
+      <p class="geyebrow">The point where value begins</p>
+      <h1>Sovereign AI.<br>Real business&nbsp;<span class="em">value.</span></h1>
+      <p class="glead">One core. Four worlds turning around it on a single stellar stream. Fall away from the centre and meet them one at a time.</p>
+      <div class="gcue"><i></i>Scroll to descend</div>
+    </div>
+  </section>
+
+  <!-- 1 · DEPARTURE -->
+  <section class="gsec" data-sec id="departure">
+    <div class="col manifesto">
+      <p>Everything begins from a point.</p>
+      <p>A point becomes a decision.</p>
+      <p>A decision becomes direction.</p>
+      <p>Direction creates momentum.</p>
+      <p>Momentum creates value.</p>
+    </div>
+  </section>
+
+  <!-- 2 · WORLD 01 -->
+  <section class="gsec" data-sec id="w-enterprise">
+    <div class="col">
+      <p class="geyebrow">World 01 · First orbit — Enterprise Technology</p>
+      <h2>Sovereign infrastructure, engineered for impact.</h2>
+      <p class="glead">The densest world on the stream. Cooled stone, sealed and self-contained — nothing enters, nothing leaks. It holds its own orbit, and it will hold yours.</p>
+      <div class="chips">
+        <span class="chip"><b>Sovereign by design</b></span>
+        <span class="chip"><b>Secure foundations</b></span>
+        <span class="chip"><b>Built to scale</b></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · WORLD 02 -->
+  <section class="gsec" data-sec id="w-consulting">
+    <div class="col">
+      <p class="geyebrow">World 02 · Second orbit — Consulting &amp; Media</p>
+      <h2>Clarity before code.</h2>
+      <p class="glead">The brightest body on the descent — banded, weather-driven, never still. Noise on the surface, signal underneath. Reading that weather is the work.</p>
+      <div class="chips">
+        <span class="chip"><b>AI strategy &amp; advisory</b></span>
+        <span class="chip"><b>Executive enablement</b></span>
+        <span class="chip"><b>Media &amp; storytelling</b></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · WORLD 03 -->
+  <section class="gsec" data-sec id="w-factory">
+    <div class="col">
+      <p class="geyebrow">World 03 · Third orbit — The AI Factory</p>
+      <h2>Build with us. Own what you build.</h2>
+      <p class="glead">A shell lit from within — fine veins of cold light where the building happens. The only light on the stream that isn't borrowed from a star.</p>
+      <div class="gnote">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="k">Field note</div>
+        <p>A belt of ventures shares this orbit — products forged in the factory, each holding its own course.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · WORLD 04 -->
+  <section class="gsec" data-sec id="team">
+    <div class="col">
+      <p class="geyebrow">World 04 · Fourth orbit — The Team</p>
+      <h2>The people at zero point.</h2>
+      <p class="glead">Small, crescent-lit, wearing a thin atmosphere of people. Easy to miss on a chart — and the only world on this stream anyone has actually stood on.</p>
+    </div>
+  </section>
+
+  <!-- 6 · ORIGIN -->
+  <section class="gsec" data-sec id="origin">
+    <div class="col">
+      <p class="geyebrow">Origin</p>
+      <h2>A single point.<br><span class="em">Infinite potential.</span></h2>
+      <p class="glead">At the base of the stream, the mark itself. Nothing orbits it. Nothing holds it up. It was here before any of the four — and everything above descends from it.</p>
+    </div>
+  </section>
+
+  <!-- 7 · ARRIVAL -->
+  <section class="gsec" data-sec id="arrival">
+    <div class="col live">
+      <p class="geyebrow">The formation, whole</p>
+      <h2>Every journey ends where value begins.</h2>
+      <p class="glead">Four worlds, one stream, one point of origin. Build on it with us.</p>
+
+      <form id="contact" novalidate>
+        <div class="field">
+          <label for="c-name">Name</label>
+          <input id="c-name" name="name" type="text" autocomplete="name" required>
+        </div>
+        <div class="field">
+          <label for="c-email">Email</label>
+          <input id="c-email" name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="c-msg">How can we help?</label>
+          <textarea id="c-msg" name="message" required></textarea>
+        </div>
+        <button class="btn btn-primary" type="submit">Talk to an expert</button>
+        <p class="form-note" id="c-note" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<script src="assets/js/zp-worlds-film.js"></script>
+</body>
+</html>

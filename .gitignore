@@ -1,5 +1,15 @@
 .vercel
 .env*
 .DS_Store
+# harness dependency: `npm i --no-save playwright-core` to run tools/*.mjs
+node_modules
+# harness output (sprite dumps, beat captures) — regenerable
+.work
 # macOS custom-folder icons (filename is literally Icon+CR)
 Icon?
+# Generated film artifact (19 MB) for the PARKED worlds-film route. The source
+# (worlds-film.html, zp-worlds-film.js) and the recipe (tools/build-film.sh,
+# tools/film-src) are committed; regenerate the mp4 rather than storing it.
+assets/film/*.mp4
+__pycache__/
+*.pyc
