@@ -54,11 +54,11 @@
     beats: [
       { sel: "#hero",         seg: 0, f: [0.00, 0.00] },
       { sel: "#departure",    seg: 0, f: [0.00, 0.55] },
-      { sel: "#w-enterprise", seg: 0, f: [0.55, 1.00], holdTail: 0.30 },
-      { sel: "#w-consulting", seg: 1, f: [0.00, 1.00], holdTail: 0.30 },
-      { sel: "#w-factory",    seg: 2, f: [0.00, 1.00], holdTail: 0.30 },
-      { sel: "#team",         seg: 3, f: [0.00, 0.62], holdTail: 0.25 },
-      { sel: "#arrival",      seg: 3, f: [0.62, 1.00], holdTail: 0.35 },
+      { sel: "#w-enterprise", seg: 0, f: [0.55, 1.00], holdTail: 0.15 },
+      { sel: "#w-consulting", seg: 1, f: [0.00, 1.00], holdTail: 0.15 },
+      { sel: "#w-factory",    seg: 2, f: [0.00, 1.00], holdTail: 0.15 },
+      { sel: "#team",         seg: 3, f: [0.00, 0.62], holdTail: 0.15 },
+      { sel: "#arrival",      seg: 3, f: [0.62, 1.00], holdTail: 0.20 },
     ],
   };
 
@@ -352,9 +352,11 @@
       if (f0) {
         const focal = lerp(focalAt(i0), focalAt(i1), a);
         drawCover(f0.img, focal, 1, 1);
-        /* blend true neighbours only — blending across a coarse-load gap
-           would paint a ghost double-exposure */
-        if (f1 && f1.at === f0.at + 1 && a > 0.01) drawCover(f1.img, focal, 1, a);
+        /* blend true neighbours only, and only WITHIN one segment — blending
+           across a coarse-load gap, or across a leg seam (last frame of one
+           leg vs first of the next), would paint a ghost double-exposure */
+        if (f1 && f1.at === f0.at + 1 && segAt(f0.at) === segAt(f1.at) && a > 0.01)
+          drawCover(f1.img, focal, 1, a);
         painted = true;
       }
     }
@@ -370,29 +372,34 @@
   }
 
   function tick(now) {
-    const dt = Math.min(0.1, (now - lastTick) / 1000);
-    lastTick = now;
-    const sy = window.scrollY;
-    const scrolled = sy !== lastScrollY;
-    if (scrolled) lastScrollY = sy;
+    try {
+      const dt = Math.min(0.1, (now - lastTick) / 1000);
+      lastTick = now;
+      const sy = window.scrollY;
+      const scrolled = sy !== lastScrollY;
+      if (scrolled) lastScrollY = sy;
 
-    if (scrolled || dirty || chasing) {
-      const t = targetState();
-      if (t.global != null) {
-        if (pos == null) pos = t.global;
-        const d = t.global - pos;
-        if (Math.abs(d) > 0.015) {
-          pos += d * (1 - Math.exp(-dt * SMOOTH_RATE));
-          chasing = true;
+      if (scrolled || dirty || chasing) {
+        const t = targetState();
+        if (t.global != null) {
+          if (pos == null) pos = t.global;
+          const d = t.global - pos;
+          if (Math.abs(d) > 0.015) {
+            pos += d * (1 - Math.exp(-dt * SMOOTH_RATE));
+            chasing = true;
+          } else {
+            pos = t.global;
+            chasing = false;
+          }
         } else {
-          pos = t.global;
           chasing = false;
         }
-      } else {
-        chasing = false;
+        dirty = false;
+        render(t);
       }
-      dirty = false;
-      render(t);
+    } catch (e) {
+      /* A single bad frame or paint must NEVER permanently freeze the scrub —
+         swallow and keep the loop alive so the next frame recovers. */
     }
     requestAnimationFrame(tick);
   }

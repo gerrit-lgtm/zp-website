@@ -178,6 +178,10 @@ main { position: relative; z-index: 10; }
 
 /* Worlds */
 .world { min-height: 110vh; }
+/* Consulting & Factory each scrub a FULL 120-frame leg, so they need ~2× the
+   scroll length of Enterprise (which shares its leg with Departure) to keep
+   frames-per-vh uniform across the journey — otherwise they fast-forward. */
+#w-consulting, #w-factory { min-height: 240vh; }
 .world h2 { font-size: var(--fs-h1); max-width: 12ch; }
 .chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 26px 0 30px; }
 .chip {
@@ -193,7 +197,7 @@ main { position: relative; z-index: 10; }
 }
 
 /* Team */
-#team { min-height: 100vh; }
+#team { min-height: 140vh; }
 .grid-team { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gutter); margin-top: 34px; }
 .member {
   background: rgba(29,53,87,0.28); border: 1px solid rgba(244,244,240,0.08);
@@ -210,7 +214,7 @@ main { position: relative; z-index: 10; }
 .tbc { color: var(--gray); font-size: var(--fs-xs); letter-spacing: 0.1em; }
 
 /* Arrival */
-#arrival { min-height: 180vh; align-items: center; text-align: center; }
+#arrival { min-height: 110vh; align-items: center; text-align: center; }
 #arrival .panel { display: flex; flex-direction: column; align-items: center; }
 #arrival .ring-mark { width: 92px; height: 74px; margin: 0 auto 34px; opacity: 0.95; }
 #arrival h2 { font-size: var(--fs-display); }
