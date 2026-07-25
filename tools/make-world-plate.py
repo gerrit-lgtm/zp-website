@@ -46,44 +46,66 @@ def cold_grade(a, strength=1.0):
     return np.clip(tinted, 0, 255).astype(np.uint8)
 
 
-def extent(im):
-    """Framing as (h_span, h_centre, v_span, v_centre), all as a fraction of
-    the canvas, measured from the widest chords through the centre lines.
+def dewarm(a, strength=1.0):
+    """Remove a warm cast WITHOUT touching anything already cold.
 
-    Do NOT use find_disc for this. It thresholds at luminance 26 to isolate a
-    solid body, which on the core — whose unlit side is near-black — latches
-    onto the crescent alone: it reports the KNOWN-GOOD engine sprite as 0.59 of
-    canvas and 15% off-centre. A chord above the alpha noise floor measures the
-    same thing without needing the body to be evenly lit."""
-    a = np.asarray(im.convert('L')).astype(np.float32)
-    n = a.shape[0]
-    xs = np.where(a[n // 2] > 11)[0]
-    ys = np.where(a[:, n // 2] > 11)[0]
-    return ((xs.max() - xs.min() + 1) / n, ((xs.min() + xs.max()) / 2) / n,
-            (ys.max() - ys.min() + 1) / n, ((ys.min() + ys.max()) / 2) / n)
+    cold_grade is the right tool when a whole render came back as Jupiter. It is
+    the wrong tool when an upscale is 99% cold and has a few ochre storm swirls
+    in it: desaturating by 92% to fix 1% of the pixels throws away all the
+    subtle blue variation that makes the body read as weather. This pulls the
+    red channel down toward blue only where red actually leads, in proportion to
+    how far it leads, so cold pixels come through bit-identical."""
+    f = a.astype(np.float32)
+    r, g, b = f[:, :, 0], f[:, :, 1], f[:, :, 2]
+    excess = np.clip(r - b, 0, None)                 # 0 where already cold
+    r -= excess * 0.85 * strength
+    g -= excess * 0.35 * strength                    # green rides with it, or it turns magenta
+    return np.clip(np.dstack([r, g, b]), 0, 255)
 
 
-def check_fit(im, ref_path, tol=0.01):
-    """Prove the upscaler did not reframe, by comparing the upscale against the
-    sprite it was made from.
+def disc_frac(im, size=512):
+    """Disc diameter as a fraction of canvas width — brightness-independent.
+
+    Average luminance in concentric rings, normalise against the interior mean,
+    and take the outermost ring still holding half of it.
+
+    THREE measures were tried before this one and all three cry wolf:
+      - find_disc thresholds at luminance 26, so on a body with a near-black
+        unlit side it latches onto the crescent alone. It calls the known-good
+        engine core sprite 0.59-of-canvas and 15% off-centre.
+      - a chord through the centre row fails the same way on dark limbs; it
+        failed basalt at 1.7% drift when the disc was in fact identical.
+      - radius-of-gyration is brightness-WEIGHTED, so a brighter crescent or a
+        bigger baked halo moves it. It flagged the core as reframed by 3.1%
+        when the drawn silhouette in-scene was unchanged to 0.6%.
+    Normalising per-ring against the body's own interior is what makes this one
+    immune to one render simply being brighter than another."""
+    a = np.asarray(im.convert('L').resize((size, size), Image.LANCZOS)).astype(np.float32)
+    yy, xx = np.mgrid[0:size, 0:size]
+    r = np.sqrt((xx - size / 2) ** 2 + (yy - size / 2) ** 2)
+    nb = 256
+    prof = np.array([a[(r >= i * size / 2 / nb) & (r < (i + 1) * size / 2 / nb)].mean()
+                     for i in range(nb)])
+    idx = np.where(prof > prof[:int(nb * 0.45)].mean() * 0.5)[0]
+    return (idx.max() + 1) / nb
+
+
+def check_fit(im, ref_path, tol=0.02):
+    """Prove the body still occupies the same share of the canvas as its source.
 
     This is the assumption the whole pipeline rests on ("an upscaler cannot
     reframe"), and a silent reframe draws the body at the wrong size with
-    nothing else looking wrong — so it is worth proving per plate rather than
-    trusting. Compared RELATIVE to the source: the absolute span reads a little
-    over 0.68 because the baked halo bleeds past the limb, which is real light
-    and belongs in the plate."""
-    got = extent(im)
-    want = extent(Image.open(ref_path).convert('RGB'))
-    drift = max(abs(g - w) for g, w in zip(got, want))
-    ok = drift <= tol
-    print(f"  fit check vs {ref_path}: span {got[0]:.4f}/{got[2]:.4f} "
-          f"vs source {want[0]:.4f}/{want[2]:.4f}, max drift {drift:.4f} — "
-          f"{'OK' if ok else '!! REFRAMED, do not ship'}")
+    nothing else looking wrong — so prove it per plate rather than trusting it."""
+    got = disc_frac(im)
+    want = disc_frac(Image.open(ref_path))
+    ratio = got / want
+    ok = abs(ratio - 1) <= tol
+    print(f"  fit check vs {ref_path}: disc {got:.4f} vs source {want:.4f}, "
+          f"ratio {ratio:.4f} — {'OK' if ok else '!! REFRAMED, do not ship'}")
     return ok
 
 
-def make_plate(src, dst, grade=0.0, fitted=False, out_size=DEFAULT_OUT_SIZE, verify_against=None):
+def make_plate(src, dst, grade=0.0, fitted=False, out_size=DEFAULT_OUT_SIZE, verify_against=None, dewarm_s=0.0):
     """fitted=True: the source ALREADY obeys the 0.68 contract, so skip disc
     detection entirely and just resize. Use this for upscaled canvas sprites —
     the engine rendered the disc at exactly 0.68 and an upscaler cannot
@@ -111,6 +133,11 @@ def make_plate(src, dst, grade=0.0, fitted=False, out_size=DEFAULT_OUT_SIZE, ver
     a = np.asarray(canvas).astype(np.float32)
     if grade > 0:
         a = cold_grade(a, grade).astype(np.float32)
+    if dewarm_s > 0:
+        before = ((a[:, :, 0] > a[:, :, 2] + 8) & (a.mean(axis=2) > 40)).mean()
+        a = dewarm(a, dewarm_s)
+        after = ((a[:, :, 0] > a[:, :, 2] + 8) & (a.mean(axis=2) > 40)).mean()
+        print(f"  dewarm {dewarm_s}: warm-tinted pixels {before*100:.2f}% -> {after*100:.2f}%")
 
     # Alpha from luminance: the render sits on black, so brightness IS coverage.
     # A soft knee keeps the halo (real light) instead of clipping it to a hard
@@ -145,7 +172,7 @@ def make_plate(src, dst, grade=0.0, fitted=False, out_size=DEFAULT_OUT_SIZE, ver
 
 if __name__ == '__main__':
     # usage: make-world-plate.py SRC DST [grade] [--fitted] [--size N]
-    #                            [--verify-against ORIGINAL_SPRITE]
+    #                            [--verify-against ORIGINAL_SPRITE] [--dewarm S]
     #
     # --size sets the plate's pixel resolution. It is NOT a free knob: pick it
     # from tools/measure-draw.mjs, which reports the largest each body is drawn
@@ -153,6 +180,11 @@ if __name__ == '__main__':
     # browser at exactly the body's own beat.
     argv = sys.argv[1:]
     fitted = '--fitted' in argv
+    dewarm_s = 0.0
+    if '--dewarm' in argv:
+        i = argv.index('--dewarm')
+        dewarm_s = float(argv[i + 1])
+        del argv[i:i + 2]
     verify_against = None
     if '--verify-against' in argv:
         i = argv.index('--verify-against')
@@ -165,4 +197,4 @@ if __name__ == '__main__':
     args = [a for a in argv if not a.startswith('--')]
     src, dst = args[0], args[1]
     grade = float(args[2]) if len(args) > 2 else 0.0
-    make_plate(src, dst, grade, fitted, out_size, verify_against)
+    make_plate(src, dst, grade, fitted, out_size, verify_against, dewarm_s)

@@ -139,9 +139,13 @@
          display every body was being BROWSER-upscaled at its own beat: core
          1.59x, clouds 2.41x, fissure 2.15x, basalt 1.58x, ice 1.24x. "HD plate"
          was never the same claim as "enough pixels where it counts". The core
-         is now a 2048px plate against a 2038px peak draw — matched. THE OTHER
-         FOUR ARE STILL 1024 AND STILL UPSCALED; re-run the tool before assuming
-         any of them is sharp.
+         is now a 2048px plate against a 2038px peak draw — matched. All four
+         worlds were then re-plated to their own measured peaks (basalt 2048,
+         clouds 2560, fissure 2304, ice 1664): at 1440x900 @2x nothing is
+         upscaled at all any more, and on a 16in MBP the worst case fell from
+         3.00x to 1.24x. Plate weight 467 KB -> 1.16 MB, which is why the four
+         worlds now load at fetchPriority 'low' behind the veil-blocking core.
+         Re-run measure-draw before changing any sprite size or camera focal.
       b) HOW IT WAS MADE. Job E's own pipeline, which beats generation because
          an upscaler CANNOT REFRAME: render the sprite (tools/sprite-out.mjs),
          Magnific creative 2x / subtle / creativity 5 / resemblance 6 / hdr 4,
@@ -161,6 +165,20 @@
       d) PORTRAIT cy 0.40 -> 0.30. See the note at the projection. The copy was
          promised the lower third and did not get it; at World 02, 43% of the
          eyebrow sat on lit cloud at 2.8:1. Now 2% at 5.9:1, invariant unchanged.
+      e) LIGHT DIRECTION IS A SHIPPABLE INVARIANT, and ice was breaking it. Every
+         body must be lit from the upper left (the shader's key is
+         L = (-.52, .46, .72)); measured as the brightness centroid inside the
+         disc, core/basalt/clouds sit at 162/163/143 degrees. The ice plate came
+         from generated art that was lit front-right and read at -45 — a full
+         phase where the rest of the descent is a crescent, i.e. the light
+         appears to jump at World 04. Two fixes were tried and rejected:
+         multiplying by a correct lambert term cannot undo baked lighting (it
+         just muddies the body and kills the rim), and re-plating from the ice
+         shader gets the angle right but is a plain grey ball beside the
+         generated art. What worked was rotating the plate 180 degrees — free,
+         keeps every bit of the crazing detail, and lands at 138 degrees. It
+         works because a sphere has no inherent up. Only fissure is exempt: it
+         is lit from within by design (World 03, the AI Factory).
       HARNESSES, all in tools/, all needing `npm i --no-save playwright-core`
       and the range-capable server: measure-draw (plate sizing), boot-check
       (veil/console/failed requests), copy-contrast (portrait legibility),
@@ -455,6 +473,11 @@
         if (!pl.plate) return;
         const img = new Image();
         img.decoding = 'async';
+        /* Job F: the four worlds are ~900 KB between them and none of them is
+           needed until its own beat, whereas the veil is held on the core. Drop
+           their priority so they queue behind it instead of racing it for
+           bandwidth on a cold load. */
+        img.fetchPriority = pl.kind === 'core' ? 'high' : 'low';
         img.onload = () => { pl.sprite = img; };
         img.onerror = () => { pl.plate = null; this.deferSprites([pl]); }; // fall back to the shader
         img.src = pl.plate;

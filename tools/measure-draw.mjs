@@ -15,9 +15,15 @@ import { readFileSync } from 'node:fs';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PORT = process.env.PORT || 8900;
 const mode = process.argv[2] || 'landscape';
-const VIEW = mode === 'portrait'
-  ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true }
-  : { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 };
+/* Peak drawn size scales with viewport HEIGHT x DPR, so the display you measure
+   on sets the answer. 'large' is a 16in MacBook Pro — the realistic high end for
+   this audience, and the one plate resolution should be chosen against. */
+const VIEWS = {
+  portrait:  { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+  landscape: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 },
+  large:     { viewport: { width: 1728, height: 1117 }, deviceScaleFactor: 2 },
+};
+const VIEW = VIEWS[mode] || VIEWS.landscape;
 
 const src = readFileSync(`${ROOT}assets/js/zp-worlds.js`, 'utf8');
 /* Tag each body's sprite so the drawImage hook can attribute the call, then
