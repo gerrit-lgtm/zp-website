@@ -4,11 +4,11 @@
 
    The scene: one dark core (the zero point, a black hole) at the summit of a
    braided stellar stream; four procedurally-shaded worlds strung along four
-   turns of the helix — one per ZeroPoint business world; a ring of starlight
-   at the base that resolves into the actual CI mark; a final pull-back that
-   reveals the whole formation. The camera falls BACKWARDS down the outside
-   of the coil, gazing back up the stream at where it came from — HELIX-V2's
-   descent, running in real time.
+   turns of the helix — one per ZeroPoint business world; the actual CI mark
+   resolving out of the dark at the base of the stream, where the descent
+   stops and holds. The camera falls BACKWARDS down the outside of the coil,
+   gazing back up the stream at where it came from — HELIX-V2's descent,
+   running in real time.
 
    Deliberate changes from the standalone (everything else ports verbatim —
    diff against prompts/reference-core-engine.js if in doubt):
@@ -16,12 +16,13 @@
    2. 7 sections -> 8: the manifesto ("departure") is spliced between the
       hero and the first world. Everything keyed to section count shifts
       from 6 to 7 intervals: f = p*7, camera keys grow one entry, the aim
-      table gains a second core entry, the finale boundary moves to f > 6.
+      table gains a second core entry, and the origin beat lands on f = 6
+      (where the descent now stops — see 15).
    3. Inner scroll container -> the page scroll, so anchors, keyboard and
       mobile browser chrome behave; the URL-bar resize guard from site.js
       replaces the ResizeObserver.
-   4. The origin ring resolves into assets/logo/mark.svg, billboarded at the
-      ring's projected centre — the journey ends on the logo.
+   4. The origin resolves into assets/logo/mark.svg, billboarded at the base
+      of the stream — the journey ends on the logo.
    5. Damped pointer parallax on the eye — the scene answers a head move.
    6. Background lifted off pure black onto the peacoat family (CI rule);
       portrait centres the composition (cx 0.5, cy 0.40) so copy owns the
@@ -29,15 +30,15 @@
       viewport crosses the width class).
    7. Reduced motion: scroll smoothing snaps, scene time freezes, grain
       holds still, parallax off.
-   8. The mark billboard draws ABOVE the field on purpose — at the finale
-      the logo is chrome, not scenery.
+   8. The mark billboard draws ABOVE the field on purpose — on the held
+      final frame the logo is chrome, not scenery.
    9. POLISH Job B — camera(): the round-to-nearest aim (weight dips to ZERO
       mid-seam, throwing every body out of frame and back in) is replaced by
       a smoothstep crossfade between CONSECUTIVE features that completes at
       80% of the seam (before the eye's helix rotation peaks); per-section
       hold weights retuned 1 / 0.5 / 0.62 -> 1 / 0.5 / 0.78. Invariant held:
       in a 50- and a 100-step scroll sweep every body enters the frame once,
-      holds, and exits once (pre-finale; the finale reveal is by design).
+      holds, and exits once across f in [0,6] — which is now the whole run.
    10. POLISH Job A — sprite resolution: 384 -> core 1280 / planets 768
       (mobile 768 / 512). makeSprite splits into renderSpriteRows; the core
       renders synchronously before first paint (veil covers it), the four
@@ -59,21 +60,117 @@
       via conic gradient (uniform rings as fallback), two-layer screen
       bloom (tight near-white sheet + wide blue atmosphere); resize()
       re-asserts imageSmoothingQuality 'high' after canvas realloc.
-   13. POLISH Job B — emergence fade: planets and ring draw only around
+   13. POLISH Job B — emergence fade: planets and the origin draw only around
       their own beat (+-1.2 sections, 0.35 ramp; the core is exempt, the
       finale pull-back lerps everything back to full). The portrait lens is
-      wide enough to catch bodies sections away (the ring peeked over the
+      wide enough to catch bodies sections away (the origin peeked over the
       bottom edge two beats early, passed worlds clipped the top corner),
       and each such peek re-violated the enter-once invariant on phones.
       With it, the 50-step sweep holds the invariant in landscape (both
       any-part-visible and centre-visible metrics) and portrait
       (any-part-visible; centre-only seam clips in the 390px-wide frame
-      remain — the body never fully leaves view). */
+      remain — the body never fully leaves view).
+   14. POLISH Job C — the origin is the MARK, nothing else. The reference
+      engine's starlight torus (drawRing) is gone: it read as a hard band
+      cutting straight through the logo at the origin beat and as a stray
+      ellipse orbiting it at the finale — a shape the CI does not own. The
+      mark now resolves out of the dark on a soft radial lift alone, and
+      this.origin survives purely as the anchor point + scale reference.
+   15. POLISH Job C — the descent ENDS on the mark. Scene progress clamps at
+      SCENE_END (6/7, the origin beat) while the copy overlay and rail keep
+      reading full-page progress: past that point the world is frozen and
+      only the arrival copy + contact form scroll up over the still frame.
+      Cut as unreachable: the finale swing-out in camera() (f > 6) and the
+      finK lerp that re-revealed every faded body with it. Two consequences
+      to keep in mind before reviving them — the reference engine's finale
+      was the ONLY place the whole formation was visible at once, and the
+      enter-once camera invariant now only has to hold over f in [0,6],
+      which is exactly the range the sweep already verified.
+   16. POLISH Job D — the four worlds brought up to the core's standard.
+      Job A matched only the core to CI/Landing.png; the worlds kept a flat
+      single-rim shader and read as matte plastic beside it. The three
+      Landing-grade ingredients (two-layer crescent, baked directional limb
+      halo, relief cutting into the limb light) were all gated on
+      kind === 'core' and now run for every kind off the SHADE table, plus
+      per-world surface detail: sub-facet weathering on basalt, three band
+      scales and a storm on clouds, crust between the veins on fissure,
+      crazing on ice. drawPlanet gains drawCore's two-layer bloom, biased
+      onto the crescent (Job A's single centred blob lit the dark side as
+      much as the lit one and flattened whatever it touched). Worlds render
+      at 1024 on desktop (was 768); mobile holds at 512.
+      VERIFIED: the core sprite is byte-identical to Job A (sha256 of the
+      composited render matches HEAD) — the reference match is untouched.
+      COST: deferred sprite work 353 -> 941 ms, i.e. ~3.1 s to full detail
+      at the 5 ms/rAF budget. Acceptable only because the queue runs in
+      scroll order: basalt is ready in ~0.34 s and each world lands well
+      before its beat. If a world is ever reordered or the budget tightened,
+      re-measure — dropping octaves does NOT help (tried: 1.4%), the cost is
+      resolution, so the knob is spriteSize. */
 (() => {
   "use strict";
 
   const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+  /* The descent ENDS on the origin beat (section 6 of 8, f = 6). Past this
+     the world holds absolutely still and only the page keeps scrolling, so
+     the arrival copy and the contact form ride up over a frozen frame of the
+     mark. Page progress runs 0..1 across 8 sections; the scene reads a
+     progress clamped here. */
+  const SCENE_END = 6 / 7;
+
+  /* POLISH Job D — per-kind shading table.
+
+     Job A matched the CORE to CI/Landing.png and stopped there; the four
+     worlds kept a flat single-rim treatment and read as matte plastic next
+     to it. Every kind now gets the same three ingredients that make the
+     reference plate work — a two-layer crescent (wide blue wash + a tight
+     near-white line at the limb), a directional halo baked outside the
+     limb, and surface relief that cuts into the limb light — with per-kind
+     numbers so each world keeps the identity its copy promises.
+
+       keyMul   key-light gain (lower = more of the body left to the dark)
+       rimK/P   wide crescent gain / falloff
+       hot/hotP tight near-white limb line: gain / falloff
+       bumpRim  how much the crescent reads surface relief (0 = geometric)
+       seamK    facet seams catching the limb light (basalt/core only)
+       haloR    halo reach, in body radii
+       haloT/W  tight and wide halo radii
+       haloA/B  tight and wide halo weights
+       haloP    how sharply the halo hugs the light direction
+       wrap     halo floor away from the light — an atmosphere, not a rim
+       rt       wide-crescent tint
+       hc/hh    halo colour, cool base -> hot core
+
+     The `core` column reproduces Job A exactly — the sprite is verified
+     byte-identical, so the reference match is not disturbed by any of this. */
+  const SHADE = {
+    /* the zero point: nearly all body left black, all drama at the limb */
+    core:    { keyMul: .35, rimK: 10.5, rimP: 2.4, hot: 34, hotP: 8.5, bumpRim: .45, seamK: 3.2,
+               haloR: 1.42, haloT: .10,  haloW: .34, haloA: .85, haloB: .22, haloP: 1.7, wrap: .06,
+               rt: [.48, .70, 1.12], hc: [98, 152, 255], hh: [234, 246, 255] },
+    /* World 01 — cooled stone, sealed. Nearest the core, deliberately not
+       its equal: the crescent is real but the body keeps its own albedo. */
+    basalt:  { keyMul: .62, rimK: 6.2,  rimP: 3.0, hot: 16, hotP: 8.0, bumpRim: .40, seamK: 2.2,
+               haloR: 1.30, haloT: .085, haloW: .26, haloA: .62, haloB: .16, haloP: 1.8, wrap: .05,
+               rt: [.55, .74, 1.10], hc: [92, 140, 242], hh: [226, 240, 255] },
+    /* World 02 — the brightest body on the descent. A lit world needs less
+       crescent and more atmosphere, so the halo runs wide and wraps far. */
+    clouds:  { keyMul: .95, rimK: 3.4,  rimP: 3.6, hot: 9,  hotP: 7.0, bumpRim: 0,   seamK: 0,
+               haloR: 1.38, haloT: .11,  haloW: .32, haloA: .50, haloB: .26, haloP: 1.5, wrap: .22,
+               rt: [.70, .84, 1.06], hc: [120, 158, 240], hh: [238, 246, 255] },
+    /* World 03 — lit from inside. Dark shell so the veins stay the brightest
+       thing on it; the crescent tints bluer to agree with them. */
+    fissure: { keyMul: .55, rimK: 5.0,  rimP: 3.2, hot: 13, hotP: 8.2, bumpRim: 0,   seamK: 0,
+               haloR: 1.34, haloT: .095, haloW: .30, haloA: .58, haloB: .20, haloP: 1.7, wrap: .10,
+               rt: [.52, .74, 1.16], hc: [96, 146, 250], hh: [228, 242, 255] },
+    /* World 04 — "small, crescent-lit, wearing a thin atmosphere". The copy
+       asks for this one outright: strongest crescent per unit body, and the
+       highest wrap so the atmosphere still rings the dark side. */
+    ice:     { keyMul: .42, rimK: 7.0,  rimP: 2.9, hot: 20, hotP: 8.4, bumpRim: 0,   seamK: 0,
+               haloR: 1.40, haloT: .105, haloW: .30, haloA: .70, haloB: .24, haloP: 1.6, wrap: .34,
+               rt: [.60, .78, 1.12], hc: [110, 158, 255], hh: [232, 244, 255] },
+  };
 
   /* ================================================================ CONTACT */
   function initForm() {
@@ -142,7 +239,7 @@
       this.railFill = document.querySelector("#rail .fill");
       this.railNum = document.querySelector("#rail .num");
 
-      /* the CI mark — the origin ring resolves into it at the base */
+      /* the CI mark — the origin resolves into it at the base of the stream */
       this.markImg = new Image();
       this.markImg.src = "assets/logo/mark.svg";
 
@@ -268,7 +365,7 @@
         this.core.sprite = this.makeSprite('core'); // first build: veiled
         this.deferSprites(this.planets);
       }
-      this.ring = { y: this.BOT - 1.4, r: 2.15 };
+      this.origin = { y: this.BOT - 1.4, r: 2.15 };
       this.grain = this.makeGrain();
       this.buildKeys();
     }
@@ -290,7 +387,11 @@
        first paint, rendered in ~6 ms row chunks so nothing hitches. */
     spriteSize(kind) {
       const mobile = innerWidth < 768;
-      return kind === 'core' ? (mobile ? 768 : 1280) : (mobile ? 512 : 768);
+      /* Job D: worlds 768 -> 1024 on desktop. The new sub-facet grain, cloud
+         bands and ice crazing are all detail that 768 was already clipping;
+         mobile holds at 512 because the deferred render there is the budget
+         constraint, not the pixels. */
+      return kind === 'core' ? (mobile ? 768 : 1280) : (mobile ? 512 : 1024);
     }
     makeSprite(kind) {
       const S = this.spriteSize(kind);
@@ -334,9 +435,8 @@
       // rim (back-left) light
       const bx = kind === 'core' ? -.50 : -.82, by = kind === 'core' ? .16 : .22, bz = kind === 'core' ? -.86 : -.52, bl = 1 / Math.hypot(bx, by, bz);
       const rx = bx * bl, ry = by * bl, rz2 = bz * bl;
-      const keyMul = kind === 'ice' ? .5 : kind === 'core' ? .35 : 1;
-      const rimK = kind === 'core' ? 10.5 : kind === 'clouds' ? 1.5 : 1.9;
-      const rimP = kind === 'core' ? 2.4 : 5.0;
+      const S_ = SHADE[kind] || SHADE.basalt;
+      const keyMul = S_.keyMul, rimK = S_.rimK, rimP = S_.rimP;
       for (let py = y0; py < y1; py++) {
         for (let px = 0; px < S; px++) {
           const i = (py * S + px) * 4;
@@ -344,29 +444,25 @@
           const d2 = nx * nx + nyS * nyS;
           const ny = -nyS;
           if (d2 > 1) {
-            if (kind === 'ice') {
-              const dd = Math.sqrt(d2);
-              const a = Math.max(0, 1 - (dd - 1) / 0.16);
-              if (a > 0) {
-                const lit = Math.max(0, (nx * lx + ny * ly) * .5 + .5);
-                const g = Math.pow(a, 2.1) * (0.16 + lit * 0.72);
-                d[i] = 150; d[i + 1] = 185; d[i + 2] = 255; d[i + 3] = Math.min(255, g * 200);
-              }
-            } else if (kind === 'core') {
-              /* POLISH: baked two-layer halo hugging the lit limb — the
-                 crescent's bloom in the reference plate (CI/Landing.png) */
-              const dd = Math.sqrt(d2);
-              if (dd < 1.42) {
-                const dirDot = Math.max(0, (nx / dd) * rx + (ny / dd) * ry);
-                const lit = 0.06 + 0.94 * Math.pow(dirDot, 1.7);
-                const tight = Math.pow(Math.max(0, 1 - (dd - 1) / 0.10), 2.4);
-                const wide = Math.pow(Math.max(0, 1 - (dd - 1) / 0.34), 2.6);
-                const a = (tight * 0.85 + wide * 0.22) * lit;
-                if (a > 0.003) {
-                  const wt = Math.min(1, tight * 1.2);
-                  d[i] = 98 + 136 * wt; d[i + 1] = 152 + 94 * wt; d[i + 2] = 255;
-                  d[i + 3] = Math.min(255, a * 255);
-                }
+            /* POLISH Job D: the two-layer halo baked outside the limb — the
+               crescent's bloom in the reference plate (CI/Landing.png) — now
+               runs for EVERY kind off the shading table, not just the core.
+               `wrap` is the floor away from the light: at 0 the glow is a
+               pure directional crescent, higher values ring the dark side
+               too, which is how the worlds carry an atmosphere. */
+            const dd = Math.sqrt(d2);
+            if (dd < S_.haloR) {
+              const dirDot = Math.max(0, (nx / dd) * rx + (ny / dd) * ry);
+              const lit = S_.wrap + (1 - S_.wrap) * Math.pow(dirDot, S_.haloP);
+              const tight = Math.pow(Math.max(0, 1 - (dd - 1) / S_.haloT), 2.4);
+              const wide = Math.pow(Math.max(0, 1 - (dd - 1) / S_.haloW), 2.6);
+              const a = (tight * S_.haloA + wide * S_.haloB) * lit;
+              if (a > 0.003) {
+                const wt = Math.min(1, tight * 1.2);
+                d[i] = S_.hc[0] + (S_.hh[0] - S_.hc[0]) * wt;
+                d[i + 1] = S_.hc[1] + (S_.hh[1] - S_.hc[1]) * wt;
+                d[i + 2] = S_.hc[2] + (S_.hh[2] - S_.hc[2]) * wt;
+                d[i + 3] = Math.min(255, a * 255);
               }
             }
             continue;
@@ -389,14 +485,29 @@
             seamV = seam;
             bump = (this.h3(f.id, 3.1, 7.7) - .5) * .30;
             const base = kind === 'core' ? .030 : .075;
-            const g = base + this.h3(f.id, 1.7, 9.3) * (kind === 'core' ? .026 : .035);
+            let g = base + this.h3(f.id, 1.7, 9.3) * (kind === 'core' ? .026 : .035);
             const shade = 1 - seam * .55;
+            if (kind === 'basalt') {
+              /* Job D: sub-facet weathering. The reference stone reads at two
+                 scales — whole facets AND grain inside them — and at sprite
+                 resolution one facet is ~90px of dead flat fill without it. */
+              const grain = this.fbm(sx * 24, sy * 24, sz * 24, 3);
+              g *= .84 + grain * .34;
+              bump += (grain - .5) * .13;
+            }
             alb = [g * .82 * shade, g * .92 * shade, g * 1.30 * shade];
             spec = (1 - seam) * (kind === 'core' ? .05 : .10);
           } else if (kind === 'clouds') {
+            /* Job D: bands at three scales plus one storm. Job A's single
+               sine and one 3-octave wash smear into mush up close. */
             const band = Math.sin(lat * 9.5 + this.fbm(sx * 2.2, sy * 5.5, sz * 2.2, 4) * 3.4);
-            const g = .40 + band * .10 + this.fbm(sx * 4, sy * 4, sz * 4, 3) * .12;
+            const fine = Math.sin(lat * 26 + this.fbm(sx * 5, sy * 11, sz * 5, 3) * 4.2);
+            const spot = Math.pow(Math.max(0, 1 - Math.hypot(lon - 1.15, (lat + .28) * 2.1) / .52), 2.2);
+            const g = .40 + band * .10 + fine * .035 + spot * .10
+              + this.fbm(sx * 4, sy * 4, sz * 4, 3) * .12
+              + this.fbm(sx * 13, sy * 13, sz * 13, 3) * .045;
             alb = [g * .95, g * 1.0, g * 1.1];
+            bump = (band * .5) * .06;
           } else if (kind === 'fissure') {
             const n = this.fbm(sx * 3.1, sy * 3.1, sz * 3.1, 5);
             const ridge = 1 - Math.abs(n * 2 - 1);
@@ -404,39 +515,51 @@
             const n2 = this.fbm(sx * 8.1 + 11, sy * 8.1, sz * 8.1, 4);
             const vein2 = Math.pow(Math.max(0, (1 - Math.abs(n2 * 2 - 1)) - .42) / .58, 20);
             const v = Math.min(1, vein * .9 + vein2 * .45);
-            const g = .050 + this.fbm(sx * 6, sy * 6, sz * 6, 4) * .045;
+            /* Job D: crust detail, so the shell between the veins is rock
+               rather than flat shadow when the crescent grazes it */
+            const crust = this.fbm(sx * 19, sy * 19, sz * 19, 3);
+            const g = .050 + this.fbm(sx * 6, sy * 6, sz * 6, 4) * .045 + crust * .020;
             alb = [g * .8, g * .9, g * 1.2];
+            bump = (crust - .5) * .16;
             emR = v * .34; emG = v * .50; emB = v * .82;
           } else if (kind === 'ice') {
             const n = this.fbm(sx * 4.4, sy * 4.4, sz * 4.4, 5);
-            const g = .34 + n * .30;
+            /* Job D: crazing — ridged fractures across the shell. This is
+               what separates ice from a smooth grey ball at close range. */
+            const cr = this.fbm(sx * 7.3 + 5, sy * 7.3, sz * 7.3, 4);
+            const craze = Math.pow(Math.max(0, (1 - Math.abs(cr * 2 - 1)) - .58) / .42, 6);
+            const g = .34 + n * .30 + this.fbm(sx * 17, sy * 17, sz * 17, 3) * .05 - craze * .13;
             alb = [g * .96, g * 1.0, g * 1.06];
-            spec = .06;
+            bump = (n - .5) * .10 - craze * .16;
+            spec = .06 + craze * .05;
           }
           let mx = sx + bump * .9, my = sy + bump * .5, mz = sz;
           const ml = 1 / Math.hypot(mx, my, mz); mx *= ml; my *= ml; mz *= ml;
           let lam = Math.max(0, mx * lx + my * ly + mz * lz);
           lam = Math.pow(lam, 1.15) * keyMul;
-          /* POLISH: the core's rim reads the BUMPED normal, so the hex
-             relief cuts visibly into the crescent (the reference plate shows
-             facets silhouetted against the limb light); seams near the
-             terminator catch the rim light, and a tight second rim layer
-             blows the limb toward white */
+          /* POLISH Job D: the rim reads the BUMPED normal, so surface relief
+             cuts visibly into the crescent (the reference plate shows facets
+             silhouetted against the limb light); seams near the terminator
+             catch the rim light, and a tight second rim layer blows the limb
+             toward white. All three were core-only in Job A and now run off
+             the table — bumpRim/seamK are 0 for the kinds with no relief, so
+             those keep the pure geometric rim they had. */
           const rimDotG = Math.max(0, sx * rx + sy * ry + sz * rz2);
-          const rimDot = kind === 'core'
-            ? Math.max(0, rimDotG * 0.55 + (mx * rx + my * ry + mz * rz2) * 0.45)
+          const rimDot = S_.bumpRim
+            ? Math.max(0, rimDotG * (1 - S_.bumpRim) + (mx * rx + my * ry + mz * rz2) * S_.bumpRim)
             : rimDotG;
           const rim = Math.pow(1 - nz, rimP) * rimDot * rimK;
-          const rimHot = kind === 'core' ? Math.pow(1 - nz, 8.5) * Math.pow(rimDot, 1.4) * 34 * (1 - seamV * 0.38) : 0;
+          const rimHot = S_.hot
+            ? Math.pow(1 - nz, S_.hotP) * Math.pow(rimDot, 1.4) * S_.hot * (1 - seamV * 0.38) : 0;
           /* seam light falls off LATERALLY from the lit limb (the rim dot
              itself dies with nz — its z term dominates — and would confine
              the seams to the blaze itself) */
           const seamDir = Math.max(0, sx * rx + sy * ry);
-          const seamLit = kind === 'core' ? seamV * Math.pow(seamDir, 1.6) * Math.pow(1 - nz, 0.7) * 3.2 : 0;
+          const seamLit = S_.seamK ? seamV * Math.pow(seamDir, 1.6) * Math.pow(1 - nz, 0.7) * S_.seamK : 0;
           const amb = 0.030;
-          /* POLISH: the core's wide rim layer leans electric blue — white
-             lives only in the tight rimHot line (reference: Landing.png) */
-          const rtR = kind === 'core' ? .48 : .72, rtG = kind === 'core' ? .70 : .85, rtB = kind === 'core' ? 1.12 : 1.05;
+          /* the wide rim layer leans electric blue — white lives only in the
+             tight rimHot line (reference: Landing.png) */
+          const rtR = S_.rt[0], rtG = S_.rt[1], rtB = S_.rt[2];
           let r = alb[0] * (lam * 1.85 + amb) + emR + rim * rtR + rimHot * 0.95 + seamLit * 0.60 + spec * Math.pow(lam, 22) * .9;
           let g = alb[1] * (lam * 1.92 + amb * 1.15) + emG + rim * rtG + rimHot * 1.0 + seamLit * 0.76 + spec * Math.pow(lam, 22);
           let b = alb[2] * (lam * 2.05 + amb * 1.6) + emB + rim * rtB + rimHot * 1.02 + seamLit * 1.05 + spec * Math.pow(lam, 22) * 1.1;
@@ -502,8 +625,9 @@
       return [Math.cos(a) * this.CR, this.TOP - u * (this.TOP - this.BOT), Math.sin(a) * this.CR];
     }
     camera(p, time) {
-      /* PORT: 8 sections -> f spans [0,7]; keys interpolate over [0,6];
-         the finale swing-out runs on f in (6,7]. */
+      /* PORT: 8 sections -> f spans [0,7]; keys interpolate over [0,6].
+         Callers clamp p to SCENE_END, so in practice f tops out at 6 and
+         the camera comes to rest on the origin beat. */
       const us = this.us, f = Math.max(0, Math.min(7, p * 7));
       const i = Math.min(us.length - 2, Math.floor(f)), t = Math.min(1, Math.max(0, f - i));
       const e = t * t * (3 - 2 * t);
@@ -521,7 +645,7 @@
         [0, this.core.y + 0.1, 0],
         [0, this.core.y + 0.1, 0],
       ].concat(this.planets.map(pl => [pl.x, pl.y, pl.z]))
-       .concat([[0, this.ring.y + 0.1, 0]]);
+       .concat([[0, this.origin.y + 0.1, 0]]);
       /* crossfade between CONSECUTIVE features so the featured-body weight
          never collapses mid-seam — the gaze hands from one body to the next
          in a single move instead of dipping to the path default and back
@@ -538,15 +662,10 @@
       const WS = (idx) => (idx === 0 ? 1 : idx === 1 ? 0.5 : 0.78);
       const wA = WS(i0) * (1 - e2), wB = WS(i1) * e2;
       tgt = tgt.map((x, j) => x * (1 - wA - wB) + feats[i0][j] * wA + feats[i1][j] * wB);
-      if (f > 6) { // the finale: swing out and see the whole formation
-        const q = f - 6;
-        const k = q * q * (3 - 2 * q);
-        const av = this.helixAng(1.115) + 2.05;
-        const v = [Math.cos(av) * 34, 1.2, Math.sin(av) * 34];
-        for (let j = 0; j < 3; j++) { eye[j] += (v[j] - eye[j]) * k; }
-        const vt = [0, 0.5, 0];
-        tgt = tgt.map((x, j) => x + (vt[j] - x) * k);
-      }
+      /* the reference engine's finale (swing out to 34 units and see the whole
+         formation) is cut: f never exceeds SCENE_END * 7 = 6, so the descent
+         ends held on the mark instead of pulling away from it. The two ambient
+         sine bobs stay — a paused world still breathes. */
       tgt[1] += Math.sin(time * 0.17) * 0.05;
       return { eye, tgt };
     }
@@ -558,7 +677,10 @@
         const max = Math.max(1, doc.scrollHeight - innerHeight);
         this.p = clamp(scrollY / max, 0, 1);
         this.ps += (this.p - this.ps) * (REDUCED ? 1 : 0.085);
-        const p = this.ps, t = REDUCED ? 0 : (performance.now() - this.t0) / 1000;
+        /* the scene stops at the origin beat and holds; the copy overlay and
+           the rail below keep reading the full-page progress, so the arrival
+           section scrolls in over a still frame */
+        const p = Math.min(this.ps, SCENE_END), t = REDUCED ? 0 : (performance.now() - this.t0) / 1000;
 
         // overlay copy — raw p so the text answers the wheel instantly
         const n = this.sections.length;
@@ -638,25 +760,26 @@
 
       /* POLISH: emergence fade — each body draws only around its own beat
          (+-1.2 sections, 0.35 ramp). The portrait lens is wide enough to
-         catch bodies far up and down the stream (the ring peeked over the
+         catch bodies far up and down the stream (the origin peeked over the
          bottom edge two sections early, a passed world's sliver clipped the
          top corner), and every such early peek is an exit-and-re-enter
-         violation. The finale pull-back reveals everything, so it lerps the
-         fade back to full. The core is exempt below: it OWNS sections 0-1
-         and its long goodbye down the stream is the design. */
+         violation. The core is exempt below: it OWNS sections 0-1 and its
+         long goodbye down the stream is the design. The finale lerp back to
+         full is gone with the finale itself. */
       const fR = Math.max(0, Math.min(7, p * 7));
-      const finQ = Math.max(0, fR - 6);
-      const finK = finQ * finQ * (3 - 2 * finQ);
       const bodyA = (sec) => {
         const dist = sec === 0 ? Math.max(0, fR - 1) : Math.abs(fR - sec);
-        return Math.max(clamp((1.2 - dist) / 0.35, 0, 1), finK);
+        return clamp((1.2 - dist) / 0.35, 0, 1);
       };
 
       // big objects sorted far -> near
       const objs = [];
       this.planets.forEach((pl, pi) => { const s = proj(pl.x, pl.y, pl.z); if (s) objs.push({ t: 'p', o: pl, s, a: bodyA(pi + 2) }); });
       { const s = proj(this.core.x, this.core.y, this.core.z); if (s) objs.push({ t: 'core', s, a: 1 }); }
-      { const s = proj(0, this.ring.y, 0); if (s) objs.push({ t: 'ring', s, a: bodyA(6) }); }
+      /* POLISH: the origin is the MARK alone. The starlight torus that used
+         to sit here read as a hard band cutting through the logo at the
+         origin beat and as a stray ellipse around it at the finale — foreign
+         to the CI. The anchor point survives; the ring no longer draws. */
       objs.sort((a, b) => b.s[2] - a.s[2]);
       const depths = objs.map(o => o.s[2]);
       const buckets = []; for (let i = 0; i <= objs.length; i++) buckets.push([]);
@@ -745,32 +868,36 @@
           ctx.globalAlpha = o.a;
           if (o.t === 'p') this.drawPlanet(ctx, o.o, o.s, foc);
           else if (o.t === 'core') this.drawCore(ctx, o.s, foc);
-          else this.drawRing(ctx, proj, foc);
           ctx.globalAlpha = 1;
         }
       }
 
-      /* the origin resolves into the mark (PORT): billboarded at the ring's
-         centre, scaled so its outer edge lands on the starlight ring itself —
-         the logo the whole descent has been falling toward */
+      /* the origin resolves into the mark: billboarded at the base of the
+         stream, sized off the origin's radius — the logo the whole descent
+         has been falling toward, standing alone with no shape around it */
       if (this.markImg.complete && this.markImg.naturalWidth) {
         const fRaw = Math.max(0, Math.min(7, p * 7));
         const mA = clamp((fRaw - 5.5) / 0.5, 0, 1);
         if (mA > 0.01) {
-          const s = proj(0, this.ring.y, 0);
+          const s = proj(0, this.origin.y, 0);
           if (s) {
-            /* capped so the close origin beat composes instead of flooding
-               the frame — the finale's pull-back shrinks it naturally */
-            const rpx = Math.min(foc * this.ring.r / s[2], H * 0.26, W * 0.40);
+            /* capped so the origin beat composes instead of flooding the
+               frame — this is the frame the descent now HOLDS on, so the cap
+               is the final composition, not a moment passed through */
+            const rpx = Math.min(foc * this.origin.r / s[2], H * 0.26, W * 0.40);
             /* portrait: clamp the centre so the whole mark stays on screen —
                a cropped logo is worse than a recomposed one */
             const mcx = portrait ? clamp(s[0], rpx + W * 0.05, W - rpx - W * 0.05) : s[0];
             const mw = rpx * 2, mh = mw * (830 / 1030);
+            /* the only thing behind the mark now: an edgeless lift that seats
+               it in the field. No ring, no rim — nothing that reads as a
+               shape the logo is sitting inside. */
             ctx.globalCompositeOperation = 'lighter';
-            const g = ctx.createRadialGradient(mcx, s[1], 0, mcx, s[1], rpx * 1.7);
-            g.addColorStop(0, 'rgba(150,186,248,' + (mA * 0.16).toFixed(3) + ')');
+            const g = ctx.createRadialGradient(mcx, s[1], 0, mcx, s[1], rpx * 2.0);
+            g.addColorStop(0, 'rgba(150,186,248,' + (mA * 0.19).toFixed(3) + ')');
+            g.addColorStop(0.55, 'rgba(132,170,238,' + (mA * 0.06).toFixed(3) + ')');
             g.addColorStop(1, 'rgba(120,160,230,0)');
-            ctx.fillStyle = g; ctx.beginPath(); ctx.arc(mcx, s[1], rpx * 1.7, 0, 6.2832); ctx.fill();
+            ctx.fillStyle = g; ctx.beginPath(); ctx.arc(mcx, s[1], rpx * 2.0, 0, 6.2832); ctx.fill();
             ctx.globalCompositeOperation = 'source-over';
             ctx.globalAlpha = mA;
             ctx.drawImage(this.markImg, mcx - mw / 2, s[1] - mh / 2, mw, mh);
@@ -811,9 +938,21 @@
       const r = foc * pl.r / this.trueDist(pl);
       if (r < .4) return;
       ctx.globalCompositeOperation = 'lighter';
-      const gr = r * (pl.kind === 'fissure' ? 3.6 : pl.kind === 'clouds' ? 3.0 : 2.4);
-      const g = ctx.createRadialGradient(s[0] - r * .35, s[1] - r * .3, 0, s[0], s[1], gr);
+      /* POLISH Job D: two-layer bloom, as drawCore has — a tight near-white
+         sheet biased onto the crescent, then the wide blue atmosphere. Job A
+         gave the worlds a single centred blob, which lit the DARK side as
+         much as the lit one and flattened every body it touched. */
       const tint = pl.kind === 'fissure' ? '110,155,235' : pl.kind === 'clouds' ? '150,180,235' : '120,155,215';
+      // crescent sits back-left, so the bloom's hot centre goes with it
+      const hx = s[0] - r * .52, hy = s[1] - r * .16;
+      const tr = r * 1.62;
+      let g = ctx.createRadialGradient(hx, hy, r * .55, hx, hy, tr);
+      g.addColorStop(0, 'rgba(206,226,255,' + (pl.kind === 'clouds' ? .17 : .13) + ')');
+      g.addColorStop(.45, 'rgba(150,186,248,.05)');
+      g.addColorStop(1, 'rgba(120,160,230,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy, tr, 0, 6.2832); ctx.fill();
+      const gr = r * (pl.kind === 'fissure' ? 3.6 : pl.kind === 'clouds' ? 3.0 : 2.4);
+      g = ctx.createRadialGradient(s[0] - r * .35, s[1] - r * .3, 0, s[0], s[1], gr);
       g.addColorStop(0, 'rgba(' + tint + ',' + (pl.kind === 'clouds' ? .16 : .12) + ')');
       g.addColorStop(1, 'rgba(' + tint + ',0)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s[0], s[1], gr, 0, 6.2832); ctx.fill();
@@ -869,26 +1008,6 @@
       ctx.drawImage(this.core.sprite, s[0] - d, s[1] - d, d * 2, d * 2);
     }
 
-    drawRing(ctx, proj, foc) {
-      ctx.globalCompositeOperation = 'lighter';
-      const N = 460, R = this.ring.r, y = this.ring.y;
-      for (let i = 0; i < N; i++) {
-        const a = i / N * 6.2832 + (i % 7) * .002;
-        const jr = R + (Math.sin(i * 12.9) * .5) * .035;
-        const s = proj(Math.cos(a) * jr, y + Math.sin(i * 7.3) * .02, Math.sin(a) * jr);
-        if (!s) continue;
-        const near = Math.min(1, 10 / s[2]);
-        const sz = Math.max(this.dpr * .7, near * 1.5 * this.dpr);
-        const al = .35 + .45 * Math.abs(Math.sin(i * 3.7));
-        const g = ctx.createRadialGradient(s[0], s[1], 0, s[0], s[1], sz * 4);
-        g.addColorStop(0, 'rgba(214,232,255,' + (al * near * .38).toFixed(3) + ')');
-        g.addColorStop(1, 'rgba(120,160,230,0)');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s[0], s[1], sz * 4, 0, 6.2832); ctx.fill();
-        ctx.fillStyle = 'rgba(232,242,255,' + (al * near).toFixed(3) + ')';
-        ctx.fillRect(s[0] - sz / 2, s[1] - sz / 2, sz, sz);
-      }
-      ctx.globalCompositeOperation = 'source-over';
-    }
   }
 
   new Worlds();
