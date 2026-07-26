@@ -209,7 +209,57 @@
          lit from 138 different directions sitting next to plates that are all
          lit from the upper left. The gradient axis is now counter-rotated by
          -rot, which expresses the screen-space key light in the rock's frame.
-      Whole pass costs 1.2 -> 1.3 ms/frame. */
+      Whole pass costs 1.2 -> 1.3 ms/frame.
+   20. POLISH Job H — TONALITY: core and basalt re-plated from generated art.
+      Job F fixed resolution but not tone: inside its disc the shipped core
+      measured median 6.7 / p90 11.7 / 94% near-black against CI/Landing.png's
+      16.3 / 104.7 / 53% — a silhouette with a rim, which is why sharpening
+      never made it read better. Both crushed bodies (core, basalt) were
+      upscales of the procedural shader; the shader's tonal range was the
+      ceiling, and an upscaler faithfully sharpens a black ball. Note 17's
+      "never generate" rule was too broad: it is true for DROP-IN use and
+      false once make-world-plate.py refits the disc — fissure and ice were
+      both generated, and read best on the page.
+      a) CORE is now reference/worlds/generated/hero-core-cinematic.jpg (the
+         agreed look target). Its disc was circle-fitted from the crescent arc
+         plus dark-limb edge profiles, because on THIS art find_disc AND the
+         radial-profile disc_frac both lie — the giant baked halo props the
+         luminance profile past the limb (measured: disc_frac calls the raw
+         hero 1.0-of-canvas). The crop is contract-sized by construction and
+         verified by limb-edge profiles on the finished plate (within ~1.5%).
+         Mirrored — the hero's crescent is on the RIGHT, and relighting baked
+         light is a rejected approach (note 18e) — then rotated so the
+         brightness centroid lands at 152.6 deg (sibling range 137-155).
+      b) The hero's dust trail and the voids left by rotate() (frame-edge
+         cut, rotation clip, crop pad) are healed by CIRCULAR INTERPOLATION
+         IN POLAR SPACE: per radius, invalid angular runs are rebuilt from
+         the valid ring values either side. Angular-wedge suppression toward
+         ambient was tried first and FAILS in-scene: its ray-shaped
+         boundaries read as hard L-edges once drawCore's bloom amplifies the
+         halo. Detect the voids by pushing a white mask through the identical
+         rotate+crop — deriving them from geometry went wrong twice.
+      c) A shadow-anchored highlight curve (identity below lum 18, gain 1.5
+         across 45..150, unity again by 245, applied as a luminance-keyed RGB
+         multiply) lifts the lit side without greying the shadow or clipping
+         the crescent — NOT a brightness/gamma move, which is exactly what
+         the tonality brief forbids. Plate: median 20.3 / p90 99.3 / 46%
+         near-black, byte size 215 KB.
+      d) BASALT: Seedream 4.5 CONDITIONED ON THE SHIPPED PLATE composited on
+         black at 55% of frame (a framing reference, not a look reference)
+         produced complete discs with margin on the first try — pure text
+         prompting had failed 19 times across two sessions (note 17). Refit
+         through the detection path, rotated -3.9 deg. Plate: median 39 /
+         p90 99.3 at 151.9 deg, 330 KB. Source art committed as
+         reference/worlds/generated/basalt-hexdisc-4k.jpg.
+      e) WEIGHT: webp encodes the ALPHA plane losslessly by default, and the
+         luminance->alpha cut inherits per-pixel photographic grain — 512 KB
+         of the new core's first 771 KB was alpha. tools/finish-plate.py
+         re-cuts alpha from 3px-blurred luminance (alpha is a coverage mask;
+         visually identical) and encodes it lossy (alpha_quality 55):
+         core 215 KB, basalt 330 KB, corner alpha still asserted 0.
+      Harnesses re-run green after the swap: nothing UPSCALED, veil 557/550
+      ms, enter-once holds at 60 steps, worst label 4% on lit ground, draw()
+      1.1 ms, all 7 beats captured against CI/Landing.png. */
 (() => {
   "use strict";
 
@@ -425,30 +475,65 @@
          This used to be 900 motes scattered anywhere from 0.3 to 1.8 of the
          coil radius with +-2 of jitter, which is a HAZE, not a stream: nothing
          in it traced the path the camera is falling along. It is now two
-         populations. The STRAND hugs the helix tightly and is what actually
-         reads as a braided flow; the HAZE is the old diffuse cloud, kept
-         because the strand alone looks like a wire. Only the strand got dense —
-         spending the particles where they describe the geometry. */
-      const D = Math.round(2600 * dens), du = new Float32Array(D * 5);
-      const STRAND = Math.round(D * 0.62);
-      const TAIL = Math.round(D * 0.10);          // convergence into the origin
-      for (let i = 0; i < D; i++) {
+         populations plus a taper at each end. The STRAND hugs the helix
+         tightly and is what actually reads as a braided flow; the HAZE is the
+         old diffuse cloud, kept because the strand alone looks like a wire;
+         the HEAD and TAIL carry the stream the last stretch to the core above
+         and the origin mark below. Only the strand got dense — spending the
+         particles where they describe the geometry. */
+      const D0 = Math.round(2600 * dens);
+      /* the HEAD is additive so the strand/haze/tail densities are untouched.
+         0.16 and near-strand alpha, not the tail's 0.10 and heavy fade: the
+         tail plays against empty black, the head against the core's halo —
+         at tail values it disappeared into the glow. */
+      const HEAD = Math.round(D0 * 0.16);
+      const D = D0 + HEAD, du = new Float32Array(D * 5);
+      const STRAND = Math.round(D0 * 0.62);
+      const TAIL = Math.round(D0 * 0.10);          // convergence into the origin
+      for (let k = 0; k < D; k++) {
+        /* the HEAD — the stream's headwater. The coil tops out at TOP while
+           the core floats 2.6 above it, so the stream used to terminate in
+           mid-air: from the departure beat the camera (now at u 0.045-0.115,
+           pitched up at the core) saw only that empty gap, the stream left
+           the frame entirely around f 0.7 and re-entered with World 01 at
+           f 1.5 — an exit-and-re-enter of the film's own current. Mirror of
+           the origin TAIL below and deliberately the same vocabulary: a
+           tapering dust strand, no new shape. It continues the helix's twist
+           upward (helixAng runs backwards for u < 0) and thins as it climbs
+           to graze the core's lower limb (motes stay outside the r 2.15
+           disc: closest approach ~2.5 from the core's centre). */
+        if (k < HEAD) {
+          const t = k / HEAD;                     // 0 at the coil top, 1 at the limb
+          /* 2.6 rad of twist, not the tail's 3.4 — a fuller swirl scatters
+             the motes all the way around the axis and half of them vanish
+             into the halo; a narrower band stays one legible ribbon */
+          const ang = 0.6 + t * 2.6;
+          const rad = this.RAD * (1 - t * 0.52);  // 4.0 -> ~1.9 against r 2.15
+          const spread = 0.50 - t * 0.24;
+          du[k * 5] = Math.cos(ang) * rad + (Math.random() - .5) * spread;
+          du[k * 5 + 1] = this.TOP + t * 1.05 + (Math.random() - .5) * spread;
+          du[k * 5 + 2] = Math.sin(ang) * rad + (Math.random() - .5) * spread;
+          du[k * 5 + 3] = (0.06 + Math.random() * 0.14) * (1 - t * 0.20);
+          du[k * 5 + 4] = Math.random() < 0.20 ? 0.6 + Math.random() * 0.7 : 0.12 + Math.random() * 0.26;
+          continue;
+        }
+        const i = k - HEAD;
         /* Job G: the last stretch of the stream spirals in and SETTLES on the
            origin. The helix stops at BOT while the mark sits 1.4 below it, so
            the stream used to just stop short and the arrival beat had nothing
            arriving. This is deliberately dust and not a new shape: note 14 cut
            a ring here because a foreign silhouette next to the mark reads as
            part of the logo. A tapering strand is the vocabulary already in use. */
-        if (i >= D - TAIL) {
-          const t = (i - (D - TAIL)) / TAIL;         // 0 at the coil, 1 at the mark
+        if (i >= D0 - TAIL) {
+          const t = (i - (D0 - TAIL)) / TAIL;        // 0 at the coil, 1 at the mark
           const ang = this.helixAng(1) + t * 3.4;
           const rad = this.RAD * Math.pow(1 - t, 1.5) * 0.85;
           const spread = 0.30 + (1 - t) * 0.5;
-          du[i * 5] = Math.cos(ang) * rad + (Math.random() - .5) * spread;
-          du[i * 5 + 1] = this.BOT - t * 1.4 + (Math.random() - .5) * spread;
-          du[i * 5 + 2] = Math.sin(ang) * rad + (Math.random() - .5) * spread;
-          du[i * 5 + 3] = (0.05 + Math.random() * 0.12) * (1 - t * 0.45);
-          du[i * 5 + 4] = Math.random() < 0.18 ? 0.6 + Math.random() * 0.7 : 0.12 + Math.random() * 0.26;
+          du[k * 5] = Math.cos(ang) * rad + (Math.random() - .5) * spread;
+          du[k * 5 + 1] = this.BOT - t * 1.4 + (Math.random() - .5) * spread;
+          du[k * 5 + 2] = Math.sin(ang) * rad + (Math.random() - .5) * spread;
+          du[k * 5 + 3] = (0.05 + Math.random() * 0.12) * (1 - t * 0.45);
+          du[k * 5 + 4] = Math.random() < 0.18 ? 0.6 + Math.random() * 0.7 : 0.12 + Math.random() * 0.26;
           continue;
         }
         const strand = i < STRAND;
@@ -460,14 +545,14 @@
         const p = this.helix(u, rad);
         const jit = strand ? 0.55 : 4;
         const off = strand ? 0.42 : 0;
-        du[i * 5] = p[0] + Math.cos(this.helixAng(u) + braid) * off + (Math.random() - .5) * jit;
-        du[i * 5 + 1] = p[1] + (Math.random() - .5) * jit;
-        du[i * 5 + 2] = p[2] + Math.sin(this.helixAng(u) + braid) * off + (Math.random() - .5) * jit;
-        du[i * 5 + 3] = strand ? 0.05 + Math.random() * 0.13 : 0.03 + Math.random() * 0.07;
+        du[k * 5] = p[0] + Math.cos(this.helixAng(u) + braid) * off + (Math.random() - .5) * jit;
+        du[k * 5 + 1] = p[1] + (Math.random() - .5) * jit;
+        du[k * 5 + 2] = p[2] + Math.sin(this.helixAng(u) + braid) * off + (Math.random() - .5) * jit;
+        du[k * 5 + 3] = strand ? 0.05 + Math.random() * 0.13 : 0.03 + Math.random() * 0.07;
         /* Most motes are grains and a few are bright flecks. drawDust spends a
            radial gradient only on the big ones, so this split is what lets the
            count nearly triple for roughly the same cost. */
-        du[i * 5 + 4] = Math.random() < 0.14 ? 0.7 + Math.random() * 0.9 : 0.12 + Math.random() * 0.3;
+        du[k * 5 + 4] = Math.random() < 0.14 ? 0.7 + Math.random() * 0.9 : 0.12 + Math.random() * 0.3;
       }
       this.dust = du; this.nDust = D;
 
@@ -802,9 +887,24 @@
     /* ---------- camera ---------- */
     buildKeys() {
       /* One u per section, riding just outside the coil, falling downward.
-         PORT: a departure key (u = 0.048, just under the core) is spliced in
-         for the manifesto beat — 7 keys for 8 sections. */
-      this.us = [-0.062, 0.048]
+         PORT: a departure key is spliced in for the manifesto beat — 7 keys
+         for 8 sections.
+
+         The two spliced keys sit at u = 0.045 / 0.115, NOT further up the
+         helix. The old pair (-0.062 / 0.048) spent 158° + 147° of orbit on
+         the first two sections while the aim stayed pinned to the on-axis
+         core — on screen that read as the camera circling a small ring
+         around the black hole, and the core's screen path reversed
+         direction four times (drift left, +163px right, -476px left, then
+         a +1079px whip right across the frame). CAMERA-GRAMMAR.md §1:
+         "never orbiting"; passed bodies exit ONCE, up and away. The
+         current keys cut the pre-World-01 orbit to 101° + 50°: the core
+         now drifts +139px, settles -46px while rising, and exits top-right
+         in one move. Sections f >= 2 are untouched (same planet keys), the
+         World-01 beat frame is pixel-identical, and both bodies' peak draw
+         sizes SHRINK (core 344 -> 313px radius at the manifesto beat), so
+         the measured plate budgets still hold. */
+      this.us = [0.045, 0.115]
         .concat(this.planets.map(pl => pl.u + 0.020))
         .concat([1.115]);
       this.CR = this.RAD + 1.7;
@@ -1123,7 +1223,20 @@
 
       /* the origin resolves into the mark: billboarded at the base of the
          stream, sized off the origin's radius — the logo the whole descent
-         has been falling toward, standing alone with no shape around it */
+         has been falling toward, standing alone with no shape around it.
+
+         POLISH Job G — the mark now draws at the same atmospheric grade as
+         the core and planets:
+         1. Wide deep-space corona (matching the core's outer atmosphere).
+         2. Tight near-white crescent bloom biased upper-left, consistent
+            with the light direction every other body obeys.
+         3. Six concentric arcs with a conic-gradient light bias (the same
+            orbital shell language as the core — the mark is an origin, not
+            a logo on a page).
+         4. The SVG is composited TWICE: first with 'lighter' at reduced
+            opacity for a luminous glow, then with 'source-over' for full
+            crisp detail — so the mark radiates rather than sits flat.
+         All layers use the existing mA entrance fade; no new state. */
       if (this.markImg.complete && this.markImg.naturalWidth) {
         const fRaw = Math.max(0, Math.min(7, p * 7));
         const mA = clamp((fRaw - 5.5) / 0.5, 0, 1);
@@ -1137,19 +1250,65 @@
             /* portrait: clamp the centre so the whole mark stays on screen —
                a cropped logo is worse than a recomposed one */
             const mcx = portrait ? clamp(s[0], rpx + W * 0.05, W - rpx - W * 0.05) : s[0];
+            const mcy = s[1];
             const mw = rpx * 2, mh = mw * (830 / 1030);
-            /* the only thing behind the mark now: an edgeless lift that seats
-               it in the field. No ring, no rim — nothing that reads as a
-               shape the logo is sitting inside. */
+
             ctx.globalCompositeOperation = 'lighter';
-            const g = ctx.createRadialGradient(mcx, s[1], 0, mcx, s[1], rpx * 2.0);
-            g.addColorStop(0, 'rgba(150,186,248,' + (mA * 0.19).toFixed(3) + ')');
-            g.addColorStop(0.55, 'rgba(132,170,238,' + (mA * 0.06).toFixed(3) + ')');
-            g.addColorStop(1, 'rgba(120,160,230,0)');
-            ctx.fillStyle = g; ctx.beginPath(); ctx.arc(mcx, s[1], rpx * 2.0, 0, 6.2832); ctx.fill();
+
+            /* layer 1: wide deep-space corona — the same outer atmosphere
+               radius as the core's second bloom layer (2.7r) */
+            const bx = mcx - rpx * 0.20, by = mcy - rpx * 0.06;
+            let g = ctx.createRadialGradient(bx, by, rpx * 0.70, bx, by, rpx * 2.7);
+            g.addColorStop(0,    'rgba(120,170,255,' + (mA * 0.36).toFixed(3) + ')');
+            g.addColorStop(0.22, 'rgba(88,140,245,'  + (mA * 0.14).toFixed(3) + ')');
+            g.addColorStop(1,    'rgba(58,100,200,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(bx, by, rpx * 2.7, 0, 6.2832); ctx.fill();
+
+            /* layer 2: tight near-white crescent bloom — upper-left bias
+               matching the scene's shared light direction */
+            const tx = mcx - rpx * 0.28, ty = mcy - rpx * 0.08;
+            g = ctx.createRadialGradient(tx, ty, rpx * 0.78, tx, ty, rpx * 1.42);
+            g.addColorStop(0,   'rgba(190,218,255,' + (mA * 0.30).toFixed(3) + ')');
+            g.addColorStop(0.4, 'rgba(130,180,255,' + (mA * 0.10).toFixed(3) + ')');
+            g.addColorStop(1,   'rgba(88,140,240,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(tx, ty, rpx * 1.42, 0, 6.2832); ctx.fill();
+
+            /* layer 3: concentric orbital arcs with conic-gradient light
+               bias — the same shell language as the core */
+            ctx.lineWidth = Math.max(0.5, rpx * 0.010);
+            let arcG = null;
+            if (ctx.createConicGradient) {
+              const la = Math.atan2(-0.10, -0.34); // same light angle as core
+              arcG = ctx.createConicGradient(la, mcx, mcy);
+              const HW = 2.27;
+              for (let i = 0; i <= 20; i++) {
+                const ti = i / 20;
+                const ang = Math.min(ti, 1 - ti) * 6.2832;
+                const aa = Math.pow(Math.cos(Math.min(1, ang / HW) * Math.PI / 2), 1.6);
+                arcG.addColorStop(ti, 'rgba(160,196,255,' + (aa * mA).toFixed(3) + ')');
+              }
+            }
+            for (let k = 1; k <= 6; k++) {
+              const rr = rpx * (1.05 + k * 0.16);
+              const base = (arcG ? 0.13 : 0.065) / (1 + k * (arcG ? 0.45 : 0.60));
+              if (arcG) { ctx.globalAlpha = base * mA; ctx.strokeStyle = arcG; }
+              else ctx.strokeStyle = 'rgba(150,186,248,' + (base * mA).toFixed(4) + ')';
+              ctx.beginPath(); ctx.arc(mcx, mcy, rr, 0, 6.2832); ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+
+            /* layer 4a: the SVG itself drawn with 'lighter' first — this
+               makes the mark glow as if it is emitting light rather than
+               sitting on top of the field */
+            ctx.globalAlpha = mA * 0.55;
+            ctx.drawImage(this.markImg, mcx - mw / 2, mcy - mh / 2, mw, mh);
+
+            /* layer 4b: full crisp draw on top for definition */
             ctx.globalCompositeOperation = 'source-over';
             ctx.globalAlpha = mA;
-            ctx.drawImage(this.markImg, mcx - mw / 2, s[1] - mh / 2, mw, mh);
+            ctx.drawImage(this.markImg, mcx - mw / 2, mcy - mh / 2, mw, mh);
             ctx.globalAlpha = 1;
           }
         }
