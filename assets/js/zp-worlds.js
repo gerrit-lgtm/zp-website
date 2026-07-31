@@ -259,7 +259,38 @@
          core 215 KB, basalt 330 KB, corner alpha still asserted 0.
       Harnesses re-run green after the swap: nothing UPSCALED, veil 557/550
       ms, enter-once holds at 60 steps, worst label 4% on lit ground, draw()
-      1.1 ms, all 7 beats captured against CI/Landing.png. */
+      1.1 ms, all 7 beats captured against CI/Landing.png.
+   21. POLISH Job I — the core re-plated at 2560 with REAL texture, and the
+      mark lit by its own scene (Gerrit: "more HD and texture", logo reworked
+      to the site's look).
+      a) The 2048 plate was a DOWNSCALE: note 20's recipe crops ~2964px from
+         the 4K hero and resizes down, so the pixels existed and the 16in-MBP
+         worst case (1.24x browser-upscaled) was self-inflicted. The recipe's
+         own intermediate (.work/core-crop2.png, post-heal/mirror/tone) went
+         through Magnific creative 2x (custom, creativity 5 / resemblance 6 /
+         hdr 4, texture-guidance prompt) to 5928px, then the standard cut at
+         --size 2560. Weight 215 -> 289 KB (q82), veil 843 ms local, draw()
+         1.3 ms — all budgets hold.
+      b) An upscaler at creativity 5 CANNOT be trusted outside the disc: it
+         re-textured the smooth halo fan with moon craters, invented a nebula
+         and a moonlet in the black corners, and left tile seams in the deep
+         shadow. Both fixed by masked blend against the ORIGINAL art, not by
+         retrying the generation: radially (upscaled pixels keep the disc +
+         tight rim to 1.03r, crossfade to the original halo by 1.16r) and
+         tonally (blend keyed on blurred ORIGINAL luminance, 0 below 12 ->
+         1 above 26, so the shadow stays the original smooth near-black —
+         the same shadow-must-stay-a-shadow rule as note 20c). Disc tonality
+         landed ON the brand target: median 17.0 / p90 111.7 / 48% near-black
+         vs Landing.png's 16.3 / 104.7 / 53%, centroid 146.8 deg (range
+         137-155). Corner alpha asserted 0; fit ratio 1.0000.
+      c) THE MARK: assets/logo/mark-lumen.svg — geometry byte-identical to
+         mark.svg, fills re-lit to the descent's shared key light (blades
+         swept white-hot upper-left -> electric blue lower-right, pupil a
+         radial near-white -> blue point: the zero point ignited, not a dot).
+         Used by the header chrome (worlds.html, + one soft drop-shadow halo
+         in worlds.css — glow, no animation) and by the origin reveal
+         (markImg above). mark.svg itself is untouched — other pages and the
+         print CI still own the flat mark. */
 (() => {
   "use strict";
 
@@ -378,11 +409,24 @@
   const ctx2d = cv && cv.getContext ? cv.getContext("2d") : null;
   if (!ctx2d) { document.body.classList.add("no-scene"); dropVeil(); return; }
 
+  let WORLD_CFG = null; // parsed CI/World/world.json, set by boot below
+
   class Worlds {
     constructor() {
       this.ctx = ctx2d;
       this.p = 0; this.ps = 0;
+      /* CI/World/world.json — the sketcher export — owns the coil and the
+         camera when present (the sketch IS the contract; see
+         "Immersive world/sketch/world-sketcher.html"). The numbers below are
+         the shipped legacy scene and remain the fallback whenever the fetch
+         fails or the file is malformed, so the page never depends on it. */
+      this.world = WORLD_CFG || null;
       this.TOP = 8.6; this.BOT = -8.6; this.RAD = 4.0; this.TURNS = -4;
+      if (this.world) {
+        const wp = this.world.path;
+        this.TOP = wp.top; this.BOT = wp.bottom;
+        this.RAD = wp.radius; this.TURNS = wp.turns;
+      }
       /* phones get a thinner field — same look, half the per-frame work */
       this.starDensity = innerWidth < 768 ? 0.55 : 1;
       this.grainAmt = 1;
@@ -393,9 +437,12 @@
       this.railFill = document.querySelector("#rail .fill");
       this.railNum = document.querySelector("#rail .num");
 
-      /* the CI mark — the origin resolves into it at the base of the stream */
+      /* the CI mark — the origin resolves into it at the base of the stream.
+         mark-lumen.svg is the scene-lit variant: same geometry as mark.svg,
+         blades graded white-hot upper-left -> electric blue lower-right along
+         the descent's shared key light, pupil ignited as a radial point. */
       this.markImg = new Image();
-      this.markImg.src = "assets/logo/mark.svg";
+      this.markImg.src = "assets/logo/mark-lumen.svg";
 
       this.resize(true);
       this.buildScene();
@@ -561,12 +608,16 @@
          clouds  -> World 02 Consulting & Media    (banded signal, never still)
          fissure -> World 03 The AI Factory        (lit from inside — own light)
          ice     -> World 04 The Team              (thin atmosphere of people) */
-      this.planets = [
+      const worldsDef = [
         { u: .13, r: .42, kind: 'basalt', plate: 'assets/img/worlds/basalt.webp' },
         { u: .36, r: .64, kind: 'clouds', plate: 'assets/img/worlds/clouds.webp' },
         { u: .59, r: .57, kind: 'fissure', plate: 'assets/img/worlds/fissure.webp' },
         { u: .82, r: .33, kind: 'ice', plate: 'assets/img/worlds/ice.webp' }
-      ].map(o => { const p = this.helix(o.u, this.RAD * 1.02); return Object.assign(o, { x: p[0], y: p[1], z: p[2] }); });
+      ];
+      /* world.json beats 1-4 place and size the four worlds (beat 0 sizes the
+         core, beat 5 the origin, below). Kinds and plates keep their order. */
+      if (this.world) this.world.beats.slice(1, 5).forEach((b, i) => { worldsDef[i].u = b.u; worldsDef[i].r = b.r; });
+      this.planets = worldsDef.map(o => { const p = this.helix(o.u, this.RAD * 1.02); return Object.assign(o, { x: p[0], y: p[1], z: p[2] }); });
       /* POLISH (Job A): planet sprites defer to after first paint — boot
          cost is the core alone, which the veil covers. On a rebuild the
          previous generation's canvases keep drawing until the deferred
@@ -594,7 +645,8 @@
       }
       this.asteroids = ast;
 
-      this.core = { x: 0, y: this.TOP + 2.6, z: 0, r: 2.15, kind: 'core',
+      this.core = { x: 0, y: this.TOP + 2.6, z: 0,
+                    r: this.world ? this.world.beats[0].r : 2.15, kind: 'core',
                     plate: 'assets/img/worlds/core.webp' };
       /* Job F: the core is plated too, so the synchronous 1280px shader render
          that used to happen here — the one thing the veil actually had to wait
@@ -606,7 +658,7 @@
       if (prevCore && prevCore.sprite) this.core.sprite = prevCore.sprite;
       this.loadPlates();
       this.deferSprites([this.core].concat(this.planets));
-      this.origin = { y: this.BOT - 1.4, r: 2.15 };
+      this.origin = { y: this.BOT - 1.4, r: this.world ? this.world.beats[5].r : 2.15 };
       this.grain = this.makeGrain();
       this.buildKeys();
     }
@@ -904,6 +956,25 @@
          World-01 beat frame is pixel-identical, and both bodies' peak draw
          sizes SHRINK (core 344 -> 313px radius at the manifesto beat), so
          the measured plate budgets still hold. */
+      if (this.world) {
+        /* world.json mode — keys sit ON the beats (the camera dwells where
+           the sketch dwelt), with one key spliced mid hero->World-01 for the
+           departure section, same 7-keys-for-8-sections shape as legacy.
+           Each key carries its own out/lead: a beat may override the global
+           camera with `cam: { out, lead }` (the sketcher's draggable camera
+           writes these), and the spliced key averages its neighbours. */
+        const wb = this.world.beats, c = this.world.camera;
+        const key = b => ({
+          u: b.u,
+          out: b.cam && isFinite(b.cam.out) ? b.cam.out : c.out,
+          lead: b.cam && isFinite(b.cam.lead) ? b.cam.lead : c.lead,
+        });
+        const k = [key(wb[0]), null, key(wb[1]), key(wb[2]), key(wb[3]), key(wb[4]), key(wb[5])];
+        k[1] = { u: (k[0].u + k[2].u) / 2, out: (k[0].out + k[2].out) / 2, lead: (k[0].lead + k[2].lead) / 2 };
+        this.camKeys = k;
+        this.us = k.map(o => o.u);
+        return;
+      }
       this.us = [0.045, 0.115]
         .concat(this.planets.map(pl => pl.u + 0.020))
         .concat([1.115]);
@@ -913,7 +984,44 @@
       const a = this.helixAng(u);
       return [Math.cos(a) * this.CR, this.TOP - u * (this.TOP - this.BOT), Math.sin(a) * this.CR];
     }
+    /* world.json mode — the sketcher's camera contract, verbatim (this math
+       is duplicated in sketch/world-sketcher.html and engine-starter/engine.js
+       on purpose: what the sketch lens showed is what the visitor gets).
+       Eye rides the coil scaled by `out` (inside the coil when out < 1),
+       `lead` below its path point; the aim hands between consecutive featured
+       bodies over the first `handoff` of each seam. Featured bodies are the
+       ENGINE's set pieces — the on-axis core and origin, the four worlds —
+       not the sketch's on-path stand-in balls. */
+    worldCamera(p, time) {
+      const c = this.world.camera, k = this.camKeys;
+      const f = Math.max(0, Math.min(7, p * 7));
+      const i = Math.min(5, Math.floor(f)), t = clamp(f - i, 0, 1);
+      const e = f >= 6 ? 1 : t * t * (3 - 2 * t);
+      const A = k[i], B = k[i + 1];
+      const u = A.u + (B.u - A.u) * e;
+      const out = A.out + (B.out - A.out) * e;
+      const lead = A.lead + (B.lead - A.lead) * e;
+      const a = this.helixAng(u);
+      const eye = [Math.cos(a) * this.RAD * out,
+                   this.TOP - u * (this.TOP - this.BOT) - lead,
+                   Math.sin(a) * this.RAD * out];
+      eye[1] += Math.sin(time * 0.21) * 0.09;
+      const feats = [
+        [0, this.core.y + 0.1, 0],
+        [0, this.core.y + 0.1, 0],
+      ].concat(this.planets.map(pl => [pl.x, pl.y, pl.z]))
+       .concat([[0, this.origin.y + 0.1, 0]]);
+      const w0 = clamp(t / (c.handoff || 0.8), 0, 1);
+      const w = f >= 6 ? 1 : w0 * w0 * (3 - 2 * w0);
+      const FA = feats[i], FB = feats[i + 1];
+      const tgt = [FA[0] + (FB[0] - FA[0]) * w,
+                   FA[1] + (FB[1] - FA[1]) * w,
+                   FA[2] + (FB[2] - FA[2]) * w];
+      tgt[1] += Math.sin(time * 0.17) * 0.05;
+      return { eye, tgt };
+    }
     camera(p, time) {
+      if (this.world) return this.worldCamera(p, time);
       /* PORT: 8 sections -> f spans [0,7]; keys interpolate over [0,6].
          Callers clamp p to SCENE_END, so in practice f tops out at 6 and
          the camera comes to rest on the origin beat. */
@@ -1036,7 +1144,11 @@
       /* PORT: portrait screens centre the composition and widen the lens a
          touch; landscape keeps the original right-of-centre text bias */
       const portrait = this.cssH > this.cssW;
-      const foc = ((portrait ? Math.min(H, W * 1.25) : H) / 2) / Math.tan(0.40);
+      /* world.json mode uses the sketcher's lens: k = min(w,h) * fov / 2,
+         so the sketch's framing carries over 1:1. Legacy keeps its tan lens. */
+      const foc = this.world
+        ? ((portrait ? Math.min(H, W * 1.25) : Math.min(W, H)) * this.world.camera.fov) / 2
+        : ((portrait ? Math.min(H, W * 1.25) : H) / 2) / Math.tan(0.40);
       const open = Math.max(0, 1 - p * 7);
       const cx = W * (portrait ? 0.5 : 0.605 + 0.085 * open * open);
       /* Job F: portrait 0.40 -> 0.30. At 0.40 the copy did NOT own the lower
@@ -1422,5 +1534,27 @@
 
   }
 
-  new Worlds();
+  /* boot — CI/World/world.json (exported from the world sketcher) drives the
+     coil, the beats and the camera when it loads and validates; anything
+     else — 404, file://, malformed JSON — boots the legacy scene untouched.
+     The veil covers the fetch (same-origin, a few ms) and dropVeil's 5 s
+     failsafe still guarantees nobody is stranded if it hangs.
+     NOTE the constructor call inside boot is a probe anchor — every
+     tools/*.mjs harness string-replaces that exact statement to capture the
+     instance, so it must stay the file's one occurrence of it. */
+  const okWorld = w => !!(w && w.path && w.camera && Array.isArray(w.beats) && w.beats.length >= 6
+    && [w.path.turns, w.path.radius, w.path.top, w.path.bottom,
+        w.camera.out, w.camera.lead, w.camera.fov, w.camera.handoff].every(Number.isFinite)
+    && w.beats.every(b => Number.isFinite(b.u) && Number.isFinite(b.r)));
+  const boot = (retried) => {
+    try { new Worlds(); }
+    catch (e) {
+      console.warn('[zp-worlds] boot failed' + (WORLD_CFG ? ', retrying legacy scene' : ''), e);
+      if (!retried && WORLD_CFG) { WORLD_CFG = null; boot(true); }
+    }
+  };
+  fetch('CI/World/world.json', { cache: 'no-cache' })
+    .then(r => (r.ok ? r.json() : null))
+    .catch(() => null)
+    .then(w => { WORLD_CFG = okWorld(w) ? w : null; boot(); });
 })();

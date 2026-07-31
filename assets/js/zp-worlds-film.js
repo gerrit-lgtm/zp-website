@@ -74,6 +74,16 @@
   if (film.readyState >= 1 /* HAVE_METADATA */) onMeta();
   if (film.readyState >= 2 /* HAVE_CURRENT_DATA */) onData();
 
+  /* iOS Safari paints no frames for a video that has never played —
+     scrubbing a pristine element moves currentTime but shows only the
+     poster. One muted play()+pause() on the first touch unlocks frame
+     decode for the whole session. Desktop never fires touchstart, so this
+     costs nothing there. */
+  addEventListener('touchstart', () => {
+    const p = film.play();
+    if (p && p.then) p.then(() => film.pause()).catch(() => {});
+  }, { once: true, passive: true });
+
   function frame() {
     requestAnimationFrame(frame);
 

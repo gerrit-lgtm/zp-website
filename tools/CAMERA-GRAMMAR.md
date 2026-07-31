@@ -122,7 +122,65 @@ Each cost real credits to discover.
 let the model only add fidelity. Correct palette in post (`tools/make-world-plate.py`
 has `cold_grade`), never in the prompt.
 
-## 7. Encoding (see `tools/build-film.sh`)
+## 7. The screen-space law (added 25 Jul 2026, after the early-descent wobble)
+
+The law in §1 constrains the camera's WORLD path — but the viewer never sees the
+world path. They see where the salient body sits on screen, frame to frame. A
+camera that is perfectly smooth in world space can still wobble on screen, and
+the eye reads that as "the camera is circling something."
+
+> **Judge every camera change by the featured body's screen trajectory, not by
+> the camera's path. Its screen X may reverse direction ONLY at a beat's rest
+> point — never mid-seam.**
+
+What produced the violation (so it isn't rebuilt): the first two camera keys sat
+far up the helix, so the eye swept 158° + 147° of orbit across the first two
+sections while the aim stayed pinned to the core — which sits ON the helix axis.
+Orbiting an on-axis subject while staring at it is a ring, not a fall. On screen
+the core went left, +163px right, −476px left, then a +1079px whip right. The
+fix was not aim shaping (eases and hand-off windows moved the dip by ~10%); it
+was moving the two spliced keys down the coil (`buildKeys()`: 0.045 / 0.115),
+cutting the pre-World-01 orbit from 305° to 151°. **Angular travel per section
+is the lever; the aim only decorates it.**
+
+Related traps, all measured on this build:
+
+- **Eased key interpolation concentrates rotation mid-seam.** Smoothstep means
+  angular velocity peaks at the seam's middle — the aim must already own the
+  next body by then (the 80% hand-off in `camera()`), or the peak whips it.
+- **Beats pin the endpoints.** Beat framings are load-bearing (plate sizes,
+  copy contrast) — cleanliness work happens BETWEEN beats. If a seam cannot be
+  made monotone with the beats fixed, move a spliced key, not a beat key.
+- **An entering body can overshoot its beat size.** The camera key can sit
+  closer to the body's orbit than the beat does, so it swells past beat size
+  mid-entry and shrinks to rest. Check size-over-time on entry, and remember
+  plate budgets are set by measured PEAK draw (`tools/measure-draw.mjs`), which
+  is often mid-seam, not at the beat.
+- **The stream must CONNECT to both of its anchors.** The coil's geometry
+  stopped at TOP while the core floats 2.6 above it; in stills the gap read
+  fine, but a camera pitched up at the core saw only empty space between them —
+  the stream left the frame around f 0.7 and re-entered with World 01, an
+  exit-and-re-enter of the film's own current. Fix: taper the dust INTO each
+  anchor (the HEAD to the core's limb, the TAIL into the origin mark — both in
+  `buildScene()`). And tune such connective dust against the body's real plate:
+  values that read against empty black disappear against a bright halo.
+
+### How to verify a camera change (the sweep discipline)
+
+1. **Replicate `camera()` + `proj()` in a ~100-line node sim** and print each
+   body's screen-X turning points with swing amplitudes across the sweep. This
+   makes wobble a NUMBER (px of reversal) before anything ships. Grid-search
+   knobs offline with hard constraints: beat frames pixel-identical, peak draws
+   not exceeded.
+2. **Run the real harnesses** (probe injection via Playwright route
+   interception — the shipped file is never modified): `tools/scroll-sweep.mjs`
+   landscape + portrait (enter-once invariant, compare against baseline, not
+   against perfection) and `tools/measure-draw.mjs` (plate budgets).
+3. **Capture before/after frames** at ~10 scroll positions (`git stash` to
+   capture the committed baseline) and look at them. The numbers catch
+   reversals; only eyes catch a composition that stopped telling the story.
+
+## 8. Encoding (see `tools/build-film.sh`)
 
 - Seedance emits **one keyframe** for the whole clip. Forcing `-g 6` is mandatory or
   scrubbing stutters — a seek would otherwise cost ~170 frames of decode.

@@ -104,6 +104,9 @@ body.worlds .em { color: var(--blue-lift); }
 
 /* a 44px tap target for the brand without moving it visually */
 body.worlds #brand { padding: 12px; top: 16px; left: calc(var(--margin) - 12px); }
+/* the lumen mark carries a whisper of the scene's own light — one soft
+   electric-blue halo, no animation: chrome glows, it does not perform */
+body.worlds #brand .mark img { filter: drop-shadow(0 0 7px rgba(110, 160, 255, 0.38)); }
 
 /* --------------------------------------------------------------- arrival
    The one beat that carries a form: everything compacts so the whole column
