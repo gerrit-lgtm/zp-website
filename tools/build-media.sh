@@ -31,20 +31,20 @@ rm -f "$OUT"/seq-1080/*.jpg "$OUT"/seq-720/*.jpg
 for k in "${!CLIPS[@]}"; do
   c="${CLIPS[$k]}"
   ffmpeg -y -v error -i "$A/$c.mp4" -vf "gradfun=1.2:16" \
-    -q:v 5 -frames:v 61 -start_number $((61 * k + 1)) "$OUT/seq-1080/f_%03d.jpg"
+    -q:v 2 -frames:v 61 -start_number $((61 * k + 1)) "$OUT/seq-1080/f_%03d.jpg"
   ffmpeg -y -v error -i "$A/$c.mp4" -vf "gradfun=1.2:16,scale=1280:720:flags=lanczos" \
-    -q:v 6 -frames:v 31 -start_number $((31 * k + 1)) "$OUT/seq-720/f_%03d.jpg"
+    -q:v 5 -frames:v 31 -start_number $((31 * k + 1)) "$OUT/seq-720/f_%03d.jpg"
 done
 # pinned exact final frame (F9 FINAL)
 ffmpeg -y -v error -sseof -0.06 -i "$A/clip-f8-f9.mp4" -vf "gradfun=1.2:16" \
-  -frames:v 1 -q:v 5 "$OUT/seq-1080/f_489.jpg"
+  -frames:v 1 -q:v 2 "$OUT/seq-1080/f_489.jpg"
 ffmpeg -y -v error -sseof -0.06 -i "$A/clip-f8-f9.mp4" -vf "gradfun=1.2:16,scale=1280:720:flags=lanczos" \
-  -frames:v 1 -q:v 6 "$OUT/seq-720/f_249.jpg"
+  -frames:v 1 -q:v 5 "$OUT/seq-720/f_249.jpg"
 
 # ---- 2 · Activation: played forward once, never scrubbed ----
 echo "== activation =="
 ffmpeg -y -v error -i "$A/clip-activation.mp4" -an -vf "gradfun=1.2:16" \
-  -c:v libx264 -preset slow -crf 20 -g 48 -pix_fmt yuv420p -profile:v high \
+  -c:v libx264 -preset slow -crf 19 -g 48 -pix_fmt yuv420p -profile:v high \
   -movflags +faststart "$OUT/activation.mp4"
 
 # ---- 3 · og image ----
