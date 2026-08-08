@@ -1,9 +1,6 @@
-video-pipeline
-prompts
-previews
-reference
-tools
-node_modules
-.work
 .git
 .DS_Store
+node_modules
+CI
+tools
+*.zip

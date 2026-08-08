@@ -1,162 +1,142 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-mode="boot" data-nav="hero">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ZeroPoint — Sovereign AI. Real business value.</title>
-<meta name="description" content="ZeroPoint — sovereign, secure and scalable AI, engineered to transform how business creates value. The point where value begins.">
-<meta name="theme-color" content="#192231">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ZeroPoint — Sovereign AI Infrastructure</title>
+  <meta name="description" content="ZeroPoint builds sovereign AI infrastructure — data, models and compute inside your perimeter. One continuous journey from the core to real business value." />
+  <meta name="theme-color" content="#01060C" />
 
-<meta property="og:title" content="ZeroPoint — The point where value begins.">
-<meta property="og:description" content="Sovereign AI. Real business value.">
-<meta property="og:type" content="website">
-<meta property="og:image" content="assets/img/poster-summit.png">
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="ZeroPoint — Sovereign AI Infrastructure" />
+  <meta property="og:description" content="The point where value begins. One continuous journey from the AI core to real business value." />
+  <meta property="og:image" content="/media/og.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/site.css">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" />
+
+  <link rel="preload" as="image" href="/media/poster-unlit.jpg" />
+  <script type="module" src="/src/main.js"></script>
 </head>
 <body>
 
-<!-- loading veil -->
-<div id="veil"><div class="spin"></div></div>
+  <a class="skip-link" href="#footer">Skip the cinematic</a>
 
-<!-- fixed backdrop -->
-<div id="poster"></div>
-<div id="stage"><canvas id="frames"></canvas></div>
-<div id="scrim"></div>
+  <header class="nav" id="nav">
+    <a class="nav-brand" href="#" data-seek-frame="0" aria-label="ZeroPoint — back to the beginning">
+      <img class="nav-mark" src="/brand/mark.svg" alt="" width="26" height="26" />
+      <span class="nav-wordmark">ZeroPoint</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#" data-seek-frame="4">Solutions</a>
+      <a href="#" data-seek-frame="3">Platform</a>
+      <a href="#" data-seek-frame="5">Industries</a>
+      <a href="#" data-seek-frame="6">Resources</a>
+      <a href="#" data-seek-frame="8">Company</a>
+    </nav>
+    <a class="btn btn-primary nav-cta" href="mailto:gerrit@zeropoint.africa?subject=ZeroPoint%20demo%20request">Book a Demo</a>
+    <button class="nav-burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="sheet">
+      <span></span><span></span>
+    </button>
+  </header>
 
-<!-- chrome -->
-<div id="progress" class="chrome"><div class="fill"></div></div>
-<a id="brand" class="chrome" href="#hero" aria-label="ZeroPoint home">
-  <span class="mark"><img src="assets/logo/mark.svg" alt=""></span>
-  <span class="wordmark">ZEROPOINT</span>
-</a>
-<a id="talk" class="chrome btn btn-primary" href="#contact">Talk to us</a>
-<nav id="dots" class="chrome" aria-label="Sections"></nav>
+  <div class="sheet" id="sheet" hidden>
+    <nav aria-label="Menu">
+      <a href="#" data-seek-frame="4">Solutions</a>
+      <a href="#" data-seek-frame="3">Platform</a>
+      <a href="#" data-seek-frame="5">Industries</a>
+      <a href="#" data-seek-frame="6">Resources</a>
+      <a href="#" data-seek-frame="8">Company</a>
+    </nav>
+    <a class="btn btn-primary" href="mailto:gerrit@zeropoint.africa?subject=ZeroPoint%20demo%20request">Book a Demo</a>
+  </div>
 
-<main>
+  <main>
+    <div class="cinema" id="cinema">
+      <div class="stage" id="stage">
 
-  <!-- 0 · HERO -->
-  <section class="beat" id="hero" data-beat="hero" data-label="Home">
-    <div class="panel"><div class="col">
-      <p class="eyebrow reveal">The point where value begins</p>
-      <h1 class="reveal">Sovereign AI.<br>Real business&nbsp;<span class="em">value.</span></h1>
-      <p class="lead reveal">Secure, sovereign and scalable — engineered to transform how business creates value.</p>
-      <div class="cta-row reveal">
-        <a class="btn btn-primary" href="#departure">Begin the journey</a>
-        <a class="btn btn-ghost" href="#contact">Talk to us</a>
+        <img class="layer poster" id="poster" src="/media/poster-unlit.jpg" alt="The dormant ZeroPoint chamber — an unlit podium inside the sphere" />
+        <video class="layer film" id="film" muted playsinline webkit-playsinline preload="auto" tabindex="-1" aria-label="Continuous pull-back from the ZeroPoint core to the boardroom"></video>
+        <video class="layer activation" id="activation" muted playsinline webkit-playsinline preload="auto" src="/media/activation.mp4" tabindex="-1" aria-hidden="true"></video>
+        <div class="layer stills" id="stills" hidden></div>
+
+        <div class="vignette" aria-hidden="true"></div>
+
+        <div class="cue" id="cue">
+          <span class="cue-label" id="cueLabel">Calibrating</span>
+          <span class="cue-bar" aria-hidden="true"><span class="cue-fill" id="cueFill"></span></span>
+          <svg class="cue-chevron" width="14" height="8" viewBox="0 0 14 8" aria-hidden="true"><path d="M1 1l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+        </div>
+
+        <div class="hint" id="hint" aria-hidden="true">Scroll&thinsp;&darr;&thinsp;to begin</div>
+
+        <aside class="msg" data-side="l" data-frame="3" aria-hidden="true">
+          <p class="msg-kicker">01 &middot; The Foundation</p>
+          <h2 class="msg-title">Sovereign AI Infrastructure</h2>
+          <p class="msg-support">Data, models and compute — all inside your perimeter.</p>
+        </aside>
+        <aside class="msg" data-side="r" data-frame="4" aria-hidden="true">
+          <p class="msg-kicker">02 &middot; The Core</p>
+          <h2 class="msg-title">Enterprise Intelligence</h2>
+          <p class="msg-support">Every decision, informed by one living core.</p>
+        </aside>
+        <aside class="msg" data-side="l" data-frame="5" aria-hidden="true">
+          <p class="msg-kicker">03 &middot; The Floor</p>
+          <h2 class="msg-title">Industrial Systems</h2>
+          <p class="msg-support">Intelligence embedded where the heavy work happens.</p>
+        </aside>
+        <aside class="msg" data-side="r" data-frame="6" aria-hidden="true">
+          <p class="msg-kicker">04 &middot; The Fabric</p>
+          <h2 class="msg-title">Connected Operations</h2>
+          <p class="msg-support">Every site, sensor and system on one operational grid.</p>
+        </aside>
+        <aside class="msg" data-side="l" data-frame="7" aria-hidden="true">
+          <p class="msg-kicker">05 &middot; The Point</p>
+          <h2 class="msg-title">Real Business Value</h2>
+          <p class="msg-support">Measured where it matters — on the bottom line.</p>
+        </aside>
+
+        <section class="ending" id="ending" aria-hidden="true">
+          <p class="end-kicker">The point where value begins</p>
+          <h1 class="end-title">Technology is never the&nbsp;destination. Value&nbsp;is.</h1>
+          <p class="end-support">Sovereign AI, engineered from the core outward — and measured in the boardroom.</p>
+          <div class="end-ctas">
+            <a class="btn btn-primary" href="mailto:gerrit@zeropoint.africa?subject=ZeroPoint%20demo%20request">Book a Demo <span aria-hidden="true">&rarr;</span></a>
+            <a class="btn btn-ghost" href="#" data-seek-frame="4">Explore Solutions</a>
+          </div>
+        </section>
+
+        <button class="replay" id="replay" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M10.5 6a4.5 4.5 0 1 1-1.7-3.5M10.5 1v2.3H8.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg> Replay</button>
+
+        <ol class="rail" id="rail" aria-label="Journey progress"></ol>
+
       </div>
-    </div></div>
-    <div class="scroll-cue"><i></i> Scroll to descend</div>
-  </section>
-
-  <!-- 1 · DEPARTURE / manifesto -->
-  <section class="beat" id="departure" data-beat="departure" data-label="Departure">
-    <div class="panel"><div class="manifesto">
-      <p class="reveal">Everything begins from a point.</p>
-      <p class="reveal">A point becomes a decision.</p>
-      <p class="reveal">A decision becomes direction.</p>
-      <p class="reveal">Direction creates momentum.</p>
-      <p class="reveal">Momentum creates value.</p>
-    </div></div>
-  </section>
-
-  <!-- 2 · WORLD 01 · Enterprise Technology -->
-  <section class="beat world" id="w-enterprise" data-beat="enterprise" data-label="Enterprise">
-    <div class="panel"><div class="col">
-      <p class="idx reveal">World 01</p>
-      <h2 class="reveal">Sovereign infrastructure, engineered for impact.</h2>
-      <div class="chips">
-        <span class="chip reveal"><b>Sovereign by design</b></span>
-        <span class="chip reveal"><b>Secure foundations</b></span>
-        <span class="chip reveal"><b>Built to scale</b></span>
-      </div>
-      <a class="btn btn-ghost reveal" href="#contact">Explore Enterprise Technology</a>
-    </div></div>
-  </section>
-
-  <!-- 3 · WORLD 02 · Consulting & Media -->
-  <section class="beat world" id="w-consulting" data-beat="consulting" data-label="Consulting & Media">
-    <div class="panel"><div class="col">
-      <p class="idx reveal">World 02</p>
-      <h2 class="reveal">Clarity before code.</h2>
-      <div class="chips">
-        <span class="chip reveal"><b>AI strategy &amp; advisory</b></span>
-        <span class="chip reveal"><b>Executive enablement</b></span>
-        <span class="chip reveal"><b>Media &amp; storytelling</b></span>
-      </div>
-      <a class="btn btn-ghost reveal" href="#contact">Explore Consulting &amp; Media</a>
-    </div></div>
-  </section>
-
-  <!-- 4 · WORLD 03 · The AI Factory -->
-  <section class="beat world" id="w-factory" data-beat="factory" data-label="AI Factory">
-    <div class="panel"><div class="col">
-      <p class="idx reveal">World 03</p>
-      <h2 class="reveal">Build with us. Own what you build.</h2>
-      <div class="chips">
-        <span class="chip reveal"><b>Ship real products</b></span>
-        <span class="chip reveal"><b>Earn real equity</b></span>
-        <span class="chip reveal"><b>Grow with the factory</b></span>
-      </div>
-      <a class="btn btn-ghost reveal" href="#contact">Explore the AI Factory</a>
-    </div></div>
-  </section>
-
-  <!-- 5 · WORLD 04 · The Team -->
-  <section class="beat" id="team" data-beat="team" data-label="The Team">
-    <div class="panel">
-      <p class="idx reveal" style="color:var(--blue);font-family:'Plus Jakarta Sans';font-weight:800;letter-spacing:.2em;font-size:12px">World 04</p>
-      <h2 class="reveal">The people at zero point.</h2>
-      <p class="lead reveal">A small team of engineers, strategists and builders.</p>
-      <div class="grid-team">
-        <div class="member reveal"><div class="avatar">Z</div><div class="name">Name TBC</div><div class="role">Founder &amp; CEO</div></div>
-        <div class="member reveal"><div class="avatar">Z</div><div class="name">Name TBC</div><div class="role">Founder</div></div>
-        <div class="member reveal"><div class="avatar">Z</div><div class="name">Name TBC</div><div class="role">Engineering</div></div>
-        <div class="member reveal"><div class="avatar">Z</div><div class="name">Name TBC</div><div class="role">Strategy &amp; Media</div></div>
-      </div>
-      <p class="tbc reveal" style="margin-top:18px">Founder names, photos and roles — pending sign-off.</p>
     </div>
-  </section>
 
-  <!-- 6 · ARRIVAL · the ring, logo forms -->
-  <section class="beat" id="arrival" data-beat="arrival" data-label="Arrival">
-    <div class="panel">
-      <img class="ring-mark reveal" src="assets/logo/mark.svg" alt="ZeroPoint">
-      <h2 class="reveal">A single point.<br><span class="em">Infinite potential.</span></h2>
-      <p class="lead reveal">Every journey ends where value begins.</p>
+    <footer class="footer" id="footer">
+      <div class="footer-brand">
+        <img src="/brand/mark.svg" alt="" width="18" height="18" />
+        <span>&copy; 2026 ZeroPoint &middot; Sovereign AI Solutions</span>
+      </div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="mailto:gerrit@zeropoint.africa">Contact</a>
+        <a href="https://zeropoint.africa" rel="noopener">zeropoint.africa</a>
+        <a href="#" data-social="linkedin">LinkedIn</a>
+        <a href="#" data-social="x">X</a>
+      </nav>
+    </footer>
+  </main>
 
-      <form id="contact" class="reveal" novalidate>
-        <div class="field">
-          <label for="c-name">Name</label>
-          <input id="c-name" name="name" type="text" autocomplete="name" required>
-        </div>
-        <div class="field">
-          <label for="c-email">Email</label>
-          <input id="c-email" name="email" type="email" autocomplete="email" required>
-        </div>
-        <div class="field">
-          <label for="c-msg">How can we help?</label>
-          <textarea id="c-msg" name="message" required></textarea>
-        </div>
-        <button class="btn btn-primary" type="submit">Talk to an expert</button>
-        <p class="form-note" id="c-note" role="status" aria-live="polite"></p>
-      </form>
+  <noscript>
+    <div style="position:fixed;inset:0;background:#01060C;color:#F4F4F0;display:grid;place-items:center;text-align:center;padding:24px;font-family:system-ui">
+      <p>ZeroPoint — Sovereign AI Infrastructure.<br />This experience needs JavaScript. Write to <a style="color:#3B6FD4" href="mailto:gerrit@zeropoint.africa">gerrit@zeropoint.africa</a>.</p>
     </div>
-  </section>
+  </noscript>
 
-</main>
-
-<footer>
-  <p>ZeroPoint — Sovereign AI Solution · The point where value begins.</p>
-  <p><a href="#hero">Back to top</a></p>
-</footer>
-
-<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-<script src="assets/js/site.js"></script>
 </body>
 </html>
