@@ -1,19 +1,21 @@
 /* ============================================================
    ZeroPoint — cinematic scroll engine
    One pinned 100vh stage; the whole page is a single scrub
-   timeline. Dormant → activation clip (once) → scroll scrubs
-   the stitched F1→F9 master; native scroll resumes at F9.
+   timeline. Dormant → activation clip (once) → scroll scrubs a
+   canvas image sequence of the F1→F9 master (video seeking is
+   asynchronous and can never scrub smoothly — synchronous
+   drawImage with cross-dissolve between adjacent frames can);
+   native scroll resumes at F9.
    ============================================================ */
 import './style.css';
 
 // ---------- timeline geometry ----------
-// The master is 8 locked clips: 7 × 121 frames + 122 frames @ 24fps (969 total).
-// Anchors sit on the clip boundaries — each one is a locked keyframe still.
+// The master is 8 locked clips: 7 × 121 frames + 122 frames @ 24fps (969
+// source frames, 40.375s). Anchors sit on the clip boundaries — each one
+// is a locked keyframe still.
 const BOUNDARY_FRAMES = [0, 121, 242, 363, 484, 605, 726, 847, 969];
-const TOTAL_FRAMES = 969;
-const FRACS = BOUNDARY_FRAMES.map((f) => f / TOTAL_FRAMES);
+const FRACS = BOUNDARY_FRAMES.map((f) => f / 969);
 const BAND = 1 / 8;                       // one transition of scroll progress
-const END_EPS = 0.045;                    // never seek the exact last timestamp
 
 const FRAME_NAMES = [
   'Origin', 'Inner Chamber', 'Sphere Architecture', 'The Sphere',
@@ -29,7 +31,8 @@ const doc = document.documentElement;
 const $ = (s) => document.querySelector(s);
 const cinema = $('#cinema');
 const stage = $('#stage');
-const film = $('#film');
+const canvas = $('#film');
+const ctx = canvas.getContext('2d');
 const activation = $('#activation');
 const poster = $('#poster');
 const stillsBox = $('#stills');
@@ -48,18 +51,29 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const saveData = navigator.connection?.saveData === true;
 const useStills = reduceMotion || saveData ||
   new URLSearchParams(location.search).has('stills');
-const small = matchMedia('(max-width: 820px)').matches;
-const MASTER_URL = small ? '/media/master-720.mp4' : '/media/master-1080.mp4';
+// the lighter sequence only for true touch devices — a narrow *desktop*
+// window on a retina display magnifies 720p frames and reads blurry
+const small = matchMedia('(max-width: 820px)').matches &&
+  matchMedia('(pointer: coarse)').matches;
+
+// ---------- image sequence ----------
+// desktop: 12 fps of the 40.375s master (485 frames) — with the dissolve,
+// scroll-controlled motion reads like the full 24fps file. touch: 6 fps.
+const SEQ_COUNT = small ? 242 : 485;
+const SEQ_DIR = small ? '/media/seq-720' : '/media/seq-1080';
+const TIER0_STRIDE = small ? 4 : 8;
+const ACTIVATION_URL = '/media/activation.mp4';
+const frames = new Array(SEQ_COUNT).fill(null);
+
+const frameUrl = (i) => `${SEQ_DIR}/f_${String(i + 1).padStart(3, '0')}.jpg`;
 
 // ---------- state ----------
 let mode = 'boot';                        // boot → activating → cinema
-let travel = 1;                           // scrollable px across the scrub track
+let travel = 1;
 let vh = innerHeight;
-let filmDuration = 0;
-let lastInputTs = 0;                      // last *user* scroll intent
-let lastScrollTs = 0;
+let lastInputTs = 0;
 let settleTimer = 0;
-let autopan = null;                       // { from, to, start, dur } — programmatic scroll
+let autopan = null;                       // programmatic scroll animation
 let hintShown = false;
 
 history.scrollRestoration = 'manual';
@@ -73,8 +87,6 @@ const easeInOutCubic = (t) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)
 
 function measure() {
   vh = innerHeight;
-  // read live — a cached value goes stale when the viewport resizes without
-  // a resize event reaching us (rotation, browser chrome, embedded panes)
   travel = Math.max(1, cinema.offsetHeight - stage.offsetHeight);
   return travel;
 }
@@ -91,25 +103,123 @@ function nearestAnchor(p) {
   return best;
 }
 
+// ---------- canvas ----------
+let dpr = 1;
+
+function sizeCanvas() {
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = Math.round(stage.clientWidth * dpr);
+  canvas.height = Math.round(stage.clientHeight * dpr);
+  ctx.imageSmoothingQuality = 'high';
+  lastA = -1;                             // force a redraw at the new size
+}
+
+function drawCover(img) {
+  const s = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+  const dw = img.naturalWidth * s;
+  const dh = img.naturalHeight * s;
+  ctx.drawImage(img, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh);
+}
+
+function nearestLoaded(from, dir) {
+  for (let i = from; i >= 0 && i < SEQ_COUNT; i += dir) {
+    if (frames[i]) return i;
+  }
+  return -1;
+}
+
+// pre-decode a window around the playhead so draws never wait on decode
+let warmCenter = -1e9;
+function warm(center) {
+  if (Math.abs(center - warmCenter) < 2) return;
+  warmCenter = center;
+  for (let i = Math.max(0, center - 8); i <= Math.min(SEQ_COUNT - 1, center + 8); i++) {
+    frames[i]?.decode?.().catch(() => {});
+  }
+}
+
+let lastA = -1, lastB = -1, lastAlpha = -1;
+
+// scrub = draw the frame below the playhead, dissolve the next one over it.
+// Both draws are synchronous, so this runs at display rate — no seeks.
+function draw(p) {
+  const fl = p * (SEQ_COUNT - 1);
+  let a = nearestLoaded(Math.floor(fl), -1);
+  if (a < 0) a = nearestLoaded(Math.floor(fl) + 1, 1);
+  if (a < 0) return;
+  let b = nearestLoaded(Math.max(Math.ceil(fl), a + 1), 1);
+  if (b < 0) b = a;
+  const alpha = b > a ? clamp((fl - a) / (b - a), 0, 1) : 0;
+  if (a === lastA && b === lastB && Math.abs(alpha - lastAlpha) < 0.004) return;
+  lastA = a; lastB = b; lastAlpha = alpha;
+  ctx.globalAlpha = 1;
+  drawCover(frames[a]);
+  if (b !== a && alpha > 0.001) {
+    ctx.globalAlpha = alpha;
+    drawCover(frames[b]);
+    ctx.globalAlpha = 1;
+  }
+  warm(Math.round(fl));
+}
+
 // ---------- preload ----------
-// The spec pins it: activation clip + master fully buffered before the
-// interaction unlocks. BOTH are fetched to blobs — iOS Safari ignores
-// preload="auto" and never fires canplaythrough for idle video, and a
-// blob src makes every later seek local and instant on every platform.
-const ACTIVATION_URL = '/media/activation.mp4';
-let masterReady = false;
+// The spec pins it: activation clip + enough frames to scrub before the
+// interaction unlocks. Tier 0 (every 4th frame) arms the gate; the rest
+// stream in behind and the dissolve tightens as they land.
 let activationReady = false;
-const bytesGot = { a: 0, m: 0 };
-const bytesTotal = { a: 3_000_000, m: small ? 13_400_000 : 30_000_000 };
+let tier0Done = false;
+let tier0Loaded = 0;
+const TIER0 = [];
+for (let i = 0; i < SEQ_COUNT; i += TIER0_STRIDE) TIER0.push(i);
+if (!TIER0.includes(SEQ_COUNT - 1)) TIER0.push(SEQ_COUNT - 1);
+const bytesGot = { a: 0 };
+const bytesTotal = { a: 3_000_000 };
 
 function updateCue() {
-  const total = bytesTotal.a + bytesTotal.m;
-  const got = Math.min(bytesGot.a, bytesTotal.a) + Math.min(bytesGot.m, bytesTotal.m);
-  cueFill.style.width = `${Math.round(clamp(got / total, 0, 1) * 100)}%`;
-  if (masterReady && activationReady) {
+  const pct = (bytesGot.a / bytesTotal.a) * 0.25 + (tier0Loaded / TIER0.length) * 0.75;
+  cueFill.style.width = `${Math.round(clamp(pct, 0, 1) * 100)}%`;
+  if (activationReady && tier0Done) {
     doc.dataset.ready = '1';
     cueLabel.textContent = 'Scroll to activate';
   }
+}
+
+function loadFrames(indices, onEach) {
+  return new Promise((resolve) => {
+    let inflight = 0;
+    let cursor = 0;
+    const pump = () => {
+      if (cursor >= indices.length && inflight === 0) return resolve();
+      while (inflight < 8 && cursor < indices.length) {
+        const i = indices[cursor++];
+        if (frames[i]) { onEach?.(); continue; }
+        inflight++;
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = () => { frames[i] = img; inflight--; onEach?.(); pump(); };
+        img.onerror = () => { inflight--; onEach?.(); pump(); };
+        img.src = frameUrl(i);
+      }
+    };
+    pump();
+  });
+}
+
+async function preloadSequence() {
+  await loadFrames(TIER0, () => { tier0Loaded++; updateCue(); });
+  tier0Done = true;
+  updateCue();
+  // stream the in-between frames mip-style (halving the stride each tier) —
+  // the dissolve simply tightens as each tier lands
+  for (let s = TIER0_STRIDE / 2; s >= 1; s /= 2) {
+    const tier = [];
+    for (let i = s; i < SEQ_COUNT; i += 2 * s) {
+      if (!frames[i]) tier.push(i);
+    }
+    await loadFrames(tier);
+  }
+  // warm the anchor stills so the rest-point crossfade is instant
+  FRACS.forEach((_, i) => { new Image().src = `/media/f${i + 1}.jpg`; });
 }
 
 async function fetchBlobUrl(url, key) {
@@ -130,29 +240,18 @@ async function fetchBlobUrl(url, key) {
   return URL.createObjectURL(new Blob(parts, { type: 'video/mp4' }));
 }
 
-// catch up on readyState — with a blob src, metadata may land before a
-// listener registered after an await would fire.
+// iOS Safari honors preload="none" strictly and reads nothing until load()
+// is called, so force it — and never let a silent engine wedge the gate:
+// give up waiting after 5s and let playback initialize on the gesture.
 function awaitMetadata(video) {
-  return new Promise((resolve) => {
-    if (video.readyState >= 1) return resolve();
-    video.addEventListener('loadedmetadata', resolve, { once: true });
-  });
-}
-
-async function preloadMaster() {
-  try {
-    film.src = await fetchBlobUrl(MASTER_URL, 'm');
-  } catch {
-    film.src = MASTER_URL;               // fall back to Range-based seeking
-    bytesGot.m = bytesTotal.m;
-  }
-  await awaitMetadata(film);
-  filmDuration = film.duration;
-  film.currentTime = 0.001;              // paint the lit frame beneath the activation layer
-  masterReady = true;
-  updateCue();
-  // warm the anchor stills so the rest-point crossfade is instant
-  FRACS.forEach((_, i) => { new Image().src = `/media/f${i + 1}.jpg`; });
+  video.load();
+  return Promise.race([
+    new Promise((resolve) => {
+      if (video.readyState >= 1) return resolve();
+      video.addEventListener('loadedmetadata', resolve, { once: true });
+    }),
+    new Promise((resolve) => setTimeout(resolve, 5000)),
+  ]);
 }
 
 async function preloadActivation() {
@@ -179,8 +278,10 @@ function buildStills() {
     stillsBox.appendChild(img);
     return img;
   });
-  masterReady = true;
   activationReady = true;
+  tier0Done = true;
+  tier0Loaded = TIER0.length;
+  bytesGot.a = bytesTotal.a;
   updateCue();
 }
 
@@ -193,7 +294,7 @@ function updateStills(p) {
 function armGate() {
   const fire = (e) => {
     if (mode !== 'boot') return;
-    if (!(masterReady && activationReady)) return;   // interaction unlocks only when buffered
+    if (!(activationReady && tier0Done)) return;     // unlocks only when buffered
     if (e.type === 'keydown' &&
         !['ArrowDown', 'PageDown', 'Space', ' ', 'Enter'].includes(e.key)) return;
     beginActivation();
@@ -217,16 +318,7 @@ function beginActivation() {
   activation.play().catch(() => {});
   poster.dataset.done = '1';
 
-  // prime the master's first frame inside this user-gesture context —
-  // iOS paints nothing for a paused pre-gesture seek, which would flash
-  // black at the activation → film handoff
-  film.addEventListener('timeupdate', () => {
-    film.pause();
-    film.currentTime = 0.001;
-  }, { once: true });
-  film.play().catch(() => {});
-
-  // scroll during the light-up is absorbed — extra gestures just lean on the throttle
+  // scroll during the light-up is absorbed — extra gestures lean on the throttle
   const lean = () => {
     if (mode === 'activating') {
       activation.playbackRate = Math.min(activation.playbackRate + 0.35, 2.2);
@@ -243,7 +335,8 @@ function beginActivation() {
 function enterCinema() {
   if (mode === 'cinema') return;
   mode = 'cinema';
-  doc.dataset.film = 'on';                           // master frame 0 = activation's last frame
+  if (!useStills) { sizeCanvas(); draw(0); }
+  doc.dataset.film = 'on';                           // sequence frame 0 = activation's last frame
   doc.dataset.mode = 'cinema';                       // unlocks native scroll
   activation.style.opacity = '0';
   scrollTo(0, 0);
@@ -253,20 +346,21 @@ function enterCinema() {
 }
 
 // ---------- scrub loop ----------
+// Raw wheel input arrives in discrete jumps; mapping it 1:1 to the film
+// reads as jank. smoothP chases the scroll target on an exponential ease
+// (~140ms time constant, frame-rate independent), so steps become glides.
+let smoothP = 0;
+let lastTickTs = 0;
+
 function applyFrame(p) {
-  if (useStills) { updateStills(p); return; }
-  if (!filmDuration) return;
-  const t = Math.min(p * filmDuration, filmDuration - END_EPS);
-  // gate on the element's own seeking flag — a missed 'seeked' event must not wedge the scrub
-  if (film.readyState >= 2 && !film.seeking && Math.abs(film.currentTime - t) > 0.02) {
-    film.currentTime = t;
-  }
+  if (useStills) updateStills(p);
+  else draw(p);
 }
 
-// The paused 1080p video frame reads soft on large/retina screens, so at
-// every rest point the hi-res 2560px still of that exact frame crossfades
-// in over the film; any scroll movement fades it back out. Hysteresis
-// keeps it from flickering right at the threshold.
+// The paused frame reads soft on large/retina screens, so at every rest
+// point the hi-res 3840px still of that exact frame crossfades in over
+// the canvas; any scroll movement fades it back out. Hysteresis keeps it
+// from flickering at the threshold.
 let stillIdx = -1;
 let stillOn = false;
 
@@ -274,7 +368,7 @@ function updateAnchorStill(p) {
   if (useStills) return;
   const i = nearestAnchor(p);
   const dist = Math.abs(p - FRACS[i]);
-  const on = stillOn ? dist < 0.006 : dist < 0.0035;
+  const on = stillOn ? dist < 0.009 : dist < 0.005;
   if (on && stillIdx !== i) {
     anchorStill.src = `/media/f${i + 1}.jpg`;
     stillIdx = i;
@@ -287,8 +381,9 @@ function updateAnchorStill(p) {
 
 function updateOverlays(p) {
   updateAnchorStill(p);
-  // messages: fully present near their anchor, fading over the outer band — pure
-  // function of scrub position, so the choreography reverses for free
+
+  // messages: fully present near their anchor, fading over the outer band —
+  // a pure function of scrub position, so the choreography reverses for free
   for (let m = 0; m < messages.length; m++) {
     const a = FRACS[MSG_FRAMES[m]];
     const d = Math.abs(p - a) / BAND;
@@ -317,12 +412,6 @@ function updateOverlays(p) {
   if (hintShown && p > 0.01) { hint.classList.remove('on'); hintShown = false; }
 }
 
-// Raw wheel input arrives in discrete jumps; mapping it 1:1 to video time
-// reads as jank. smoothP chases the scroll target on an exponential ease
-// (~110ms time constant, frame-rate independent), so steps become glides.
-let smoothP = 0;
-let lastTickTs = 0;
-
 function update(force) {
   if (mode !== 'cinema') return;
   if (force) smoothP = progress();
@@ -334,7 +423,7 @@ function tick(now) {
   if (mode === 'cinema') {
     const targetP = progress();
     const dt = Math.min(now - lastTickTs || 16.7, 100);
-    smoothP += (targetP - smoothP) * (1 - Math.exp(-dt / 110));
+    smoothP += (targetP - smoothP) * (1 - Math.exp(-dt / 140));
     if (Math.abs(targetP - smoothP) < 0.0004) smoothP = targetP;
     applyFrame(smoothP);
     updateOverlays(smoothP);
@@ -377,8 +466,7 @@ function scheduleSettle() {
 }
 
 addEventListener('scroll', () => {
-  lastScrollTs = performance.now();
-  if (!autopan) { lastInputTs = lastScrollTs; scheduleSettle(); }
+  if (!autopan) { lastInputTs = performance.now(); scheduleSettle(); }
 }, { passive: true });
 
 ['wheel', 'touchstart', 'keydown'].forEach((ev) =>
@@ -401,7 +489,7 @@ document.querySelectorAll('[data-seek-frame]').forEach((el) => {
   });
 });
 
-$('#replay').addEventListener('click', () => seekToFrame(0, 1900));
+replayEl.addEventListener('click', () => seekToFrame(0, 1900));
 
 // ---------- dot rail ----------
 const railItems = FRAME_NAMES.map((name, i) => {
@@ -433,7 +521,10 @@ burger.addEventListener('click', () => {
 $('#sheet').hidden = false;
 
 // ---------- boot ----------
-addEventListener('resize', measure);
+addEventListener('resize', () => {
+  measure();
+  if (mode === 'cinema' && !useStills) { sizeCanvas(); draw(smoothP); }
+});
 measure();
 armGate();
 
@@ -441,7 +532,7 @@ if (useStills) {
   buildStills();
 } else {
   preloadActivation();
-  preloadMaster();
+  preloadSequence();
 }
 
 updateCue();
@@ -449,4 +540,7 @@ requestAnimationFrame(tick);
 
 // probe hook for scroll-sweep verification harnesses (headless panes defer
 // rAF + scroll events, so invariant checks drive the update directly)
-window.__zp = { update, progress, measure, FRACS, seekToFrame };
+window.__zp = {
+  update, progress, measure, FRACS, seekToFrame,
+  seqLoaded: () => frames.filter(Boolean).length,
+};

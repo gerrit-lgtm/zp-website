@@ -61,3 +61,13 @@ ffmpeg -y -v error -i "$SRC/uploads/existing exterior sphere image.png" \
 
 echo "== done =="
 ls -la "$OUT"
+
+# ---- 5 · Scrub sequences (the page scrubs these on canvas, not the mp4s) ----
+# Desktop: 12fps/1080p (485 frames) · touch: 6fps/720p (242 frames). The mp4
+# masters stay in the repo as the sequence source but are excluded from deploys.
+echo "== scrub sequences =="
+mkdir -p "$OUT/seq-1080" "$OUT/seq-720"
+ffmpeg -y -v error -i "$OUT/master-1080.mp4" -vf "fps=12,scale=1920:1080:flags=lanczos" -q:v 6 "$OUT/seq-1080/f_%03d.jpg"
+ffmpeg -y -v error -ss 40.32 -i "$OUT/master-1080.mp4" -frames:v 1 -q:v 6 "$OUT/seq-1080/f_485.jpg"
+ffmpeg -y -v error -i "$OUT/master-1080.mp4" -vf "fps=6,scale=1280:720:flags=lanczos" -q:v 7 "$OUT/seq-720/f_%03d.jpg"
+ffmpeg -y -v error -ss 40.32 -i "$OUT/master-1080.mp4" -vf "scale=1280:720:flags=lanczos" -frames:v 1 -q:v 7 "$OUT/seq-720/f_242.jpg"
