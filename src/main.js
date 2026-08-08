@@ -64,7 +64,9 @@ const small = matchMedia('(max-width: 820px)').matches &&
 // scroll-controlled motion reads like the full 24fps master.
 const FPC = small ? 31 : 61;
 const SEQ_COUNT = FPC * 8 + 1;
-const SEQ_DIR = small ? '/media/seq-720' : '/media/seq-1080';
+// retina desktops get the Real-ESRGAN 2560×1440 tier; 1080 stays the default
+const hiDpi = !small && devicePixelRatio >= 2 && innerWidth >= 1600;
+const SEQ_DIR = small ? '/media/seq-720' : (hiDpi ? '/media/seq-1440' : '/media/seq-1080');
 const TIER0_STRIDE = small ? 4 : 8;
 const ACTIVATION_URL = '/media/activation.mp4';
 const frames = new Array(SEQ_COUNT).fill(null);
