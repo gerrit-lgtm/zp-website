@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
-# ZeroPoint cinematic media pipeline.
+# ZeroPoint cinematic media pipeline (v2 — canvas sequence era).
 #
-# Input : the Claude Design handoff bundle (8 master clips + activation clip + stills).
+# Input : the Claude Design handoff bundle (8 master clips + activation clip).
 # Output: public/media/ — everything the page serves.
 #
-# The trap this script exists for: the generated clips carry exactly ONE
-# H.264 keyframe (frame 0). Scrubbing such a file means decoding up to ~120
-# P-frames per seek — unusable. We re-encode the stitched master with GOP=6
-# (a keyframe every 250ms), drop the silent AAC track, and faststart the moov
-# atom so Range requests can seek immediately.
+# The page scrubs a CANVAS IMAGE SEQUENCE, not a video: frames are extracted
+# PER SOURCE CLIP (skipping any stitched-master re-encode generation) with
+# gradfun debanding for the near-black gradients. 61 (desktop) / 31 (touch)
+# frames per clip + a pinned exact final frame, so anchor k sits exactly on
+# frame FPC·k. If clip counts change, update FPC/SEQ_COUNT in src/main.js.
+#
+# The anchor stills f1–f9.jpg + poster tiers were produced separately via the
+# Magnific MCP (images_upscale, mode ultra-photo, 2x — fidelity only; the F9
+# founder faces are locked). Re-running THIS script does not regenerate them.
 #
 # Usage: tools/build-media.sh /path/to/handoff/project
 set -euo pipefail
@@ -16,58 +20,37 @@ set -euo pipefail
 SRC="${1:?usage: build-media.sh <handoff project dir>}"
 A="$SRC/assets"
 OUT="$(cd "$(dirname "$0")/.." && pwd)/public/media"
-mkdir -p "$OUT"
+mkdir -p "$OUT/seq-1080" "$OUT/seq-720"
 
 CLIPS=(clip-f1-f2 clip-f2-f3 clip-f3-f4 clip-f4-f5 clip-f5-f6 clip-f6-f7 clip-f7-f8 clip-f8-f9)
 
-# ---- 1 · Master: concat the 8 locked clips, one continuous 40.375s pull-back ----
-INPUTS=(); CHAIN=""
-for i in "${!CLIPS[@]}"; do
-  INPUTS+=(-i "$A/${CLIPS[$i]}.mp4")
-  CHAIN+="[$i:v:0]"
+# ---- 1 · Scrub sequences, extracted per clip (bash arrays are 0-indexed;
+#          run this file with bash, not zsh) ----
+echo "== scrub sequences =="
+rm -f "$OUT"/seq-1080/*.jpg "$OUT"/seq-720/*.jpg
+for k in "${!CLIPS[@]}"; do
+  c="${CLIPS[$k]}"
+  ffmpeg -y -v error -i "$A/$c.mp4" -vf "gradfun=1.2:16" \
+    -q:v 5 -frames:v 61 -start_number $((61 * k + 1)) "$OUT/seq-1080/f_%03d.jpg"
+  ffmpeg -y -v error -i "$A/$c.mp4" -vf "gradfun=1.2:16,scale=1280:720:flags=lanczos" \
+    -q:v 6 -frames:v 31 -start_number $((31 * k + 1)) "$OUT/seq-720/f_%03d.jpg"
 done
-CHAIN+="concat=n=${#CLIPS[@]}:v=1:a=0"
+# pinned exact final frame (F9 FINAL)
+ffmpeg -y -v error -sseof -0.06 -i "$A/clip-f8-f9.mp4" -vf "gradfun=1.2:16" \
+  -frames:v 1 -q:v 5 "$OUT/seq-1080/f_489.jpg"
+ffmpeg -y -v error -sseof -0.06 -i "$A/clip-f8-f9.mp4" -vf "gradfun=1.2:16,scale=1280:720:flags=lanczos" \
+  -frames:v 1 -q:v 6 "$OUT/seq-720/f_249.jpg"
 
-echo "== master-1080 =="
-ffmpeg -y -v error "${INPUTS[@]}" -filter_complex "${CHAIN}[v]" -map "[v]" \
-  -c:v libx264 -preset slow -crf 22 -g 6 -keyint_min 6 -sc_threshold 0 \
-  -pix_fmt yuv420p -profile:v high -movflags +faststart "$OUT/master-1080.mp4"
-
-echo "== master-720 =="
-ffmpeg -y -v error "${INPUTS[@]}" -filter_complex "${CHAIN}[vc];[vc]scale=1280:720:flags=lanczos[v]" -map "[v]" \
-  -c:v libx264 -preset slow -crf 23 -g 6 -keyint_min 6 -sc_threshold 0 \
-  -pix_fmt yuv420p -profile:v high -movflags +faststart "$OUT/master-720.mp4"
-
-# ---- 2 · Activation: played forward once, never scrubbed — normal GOP is fine ----
+# ---- 2 · Activation: played forward once, never scrubbed ----
 echo "== activation =="
-ffmpeg -y -v error -i "$A/clip-activation.mp4" -an \
-  -c:v libx264 -preset slow -crf 21 -g 48 -pix_fmt yuv420p -profile:v high \
+ffmpeg -y -v error -i "$A/clip-activation.mp4" -an -vf "gradfun=1.2:16" \
+  -c:v libx264 -preset slow -crf 20 -g 48 -pix_fmt yuv420p -profile:v high \
   -movflags +faststart "$OUT/activation.mp4"
 
-# ---- 3 · Anchor stills F1–F9, pulled from the master itself (grading matches) ----
-# Boundaries: 7 clips of 5.041667s then one of 5.083333s.
-echo "== anchor stills =="
-TIMES=(0.03 5.0417 10.0833 15.1250 20.1667 25.2083 30.2500 35.2917 40.3200)
-for i in "${!TIMES[@]}"; do
-  n=$((i+1))
-  ffmpeg -y -v error -ss "${TIMES[$i]}" -i "$OUT/master-1080.mp4" -frames:v 1 -q:v 3 "$OUT/f$n.jpg"
-done
-
-# ---- 4 · Posters + og ----
-echo "== posters =="
-ffmpeg -y -v error -i "$OUT/activation.mp4" -frames:v 1 -q:v 3 "$OUT/poster-unlit.jpg"
+# ---- 3 · og image ----
+echo "== og =="
 ffmpeg -y -v error -i "$SRC/uploads/existing exterior sphere image.png" \
   -vf "scale=1200:675:flags=lanczos,crop=1200:630" -frames:v 1 -q:v 3 "$OUT/og.jpg"
 
 echo "== done =="
-ls -la "$OUT"
-
-# ---- 5 · Scrub sequences (the page scrubs these on canvas, not the mp4s) ----
-# Desktop: 12fps/1080p (485 frames) · touch: 6fps/720p (242 frames). The mp4
-# masters stay in the repo as the sequence source but are excluded from deploys.
-echo "== scrub sequences =="
-mkdir -p "$OUT/seq-1080" "$OUT/seq-720"
-ffmpeg -y -v error -i "$OUT/master-1080.mp4" -vf "fps=12,scale=1920:1080:flags=lanczos" -q:v 6 "$OUT/seq-1080/f_%03d.jpg"
-ffmpeg -y -v error -ss 40.32 -i "$OUT/master-1080.mp4" -frames:v 1 -q:v 6 "$OUT/seq-1080/f_485.jpg"
-ffmpeg -y -v error -i "$OUT/master-1080.mp4" -vf "fps=6,scale=1280:720:flags=lanczos" -q:v 7 "$OUT/seq-720/f_%03d.jpg"
-ffmpeg -y -v error -ss 40.32 -i "$OUT/master-1080.mp4" -vf "scale=1280:720:flags=lanczos" -frames:v 1 -q:v 7 "$OUT/seq-720/f_242.jpg"
+echo "seq-1080: $(ls "$OUT/seq-1080" | wc -l) frames · seq-720: $(ls "$OUT/seq-720" | wc -l) frames"

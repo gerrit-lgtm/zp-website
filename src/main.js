@@ -23,8 +23,9 @@ const FRAME_NAMES = [
   'Executive Strategy', 'The Founders',
 ];
 
-// Message overlays live on anchors F4–F8 (indices 3–7)
-const MSG_FRAMES = [3, 4, 5, 6, 7];
+// Message overlays live on anchors F2–F8 (indices 1–7) — the early frames
+// carry prologue copy so the pull-back has a story from the first scroll
+const MSG_FRAMES = [1, 2, 3, 4, 5, 6, 7];
 
 // ---------- elements ----------
 const doc = document.documentElement;
@@ -57,9 +58,12 @@ const small = matchMedia('(max-width: 820px)').matches &&
   matchMedia('(pointer: coarse)').matches;
 
 // ---------- image sequence ----------
-// desktop: 12 fps of the 40.375s master (485 frames) — with the dissolve,
-// scroll-controlled motion reads like the full 24fps file. touch: 6 fps.
-const SEQ_COUNT = small ? 242 : 485;
+// frames are extracted per source clip (no re-encode generation, debanded):
+// 61 (desktop) / 31 (touch) per clip + a pinned exact final frame, so
+// anchor k sits exactly on frame FPC·k. ~12 fps — with the dissolve,
+// scroll-controlled motion reads like the full 24fps master.
+const FPC = small ? 31 : 61;
+const SEQ_COUNT = FPC * 8 + 1;
 const SEQ_DIR = small ? '/media/seq-720' : '/media/seq-1080';
 const TIER0_STRIDE = small ? 4 : 8;
 const ACTIVATION_URL = '/media/activation.mp4';
@@ -114,11 +118,47 @@ function sizeCanvas() {
   lastA = -1;                             // force a redraw at the new size
 }
 
-function drawCover(img) {
-  const s = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+// Never stretch source pixels much past native on desktop — beyond that,
+// letterbox into the void (#01060C); the composition is a centred axis on
+// near-black, so the bars are invisible. Touch keeps full cover: bars
+// would shrink the world to a strip on portrait screens.
+const MAX_UPSCALE = 1.2;
+let drawRect = { x: 0, y: 0, w: 0, h: 0, letterbox: false };
+
+function computeRect(img) {
+  const coverS = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+  const containS = Math.min(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+  const s = small ? coverS : Math.min(coverS, Math.max(containS, MAX_UPSCALE));
   const dw = img.naturalWidth * s;
   const dh = img.naturalHeight * s;
-  ctx.drawImage(img, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh);
+  drawRect = {
+    x: (canvas.width - dw) / 2,
+    y: (canvas.height - dh) / 2,
+    w: dw,
+    h: dh,
+    letterbox: s < coverS - 1e-6,
+  };
+}
+
+function drawCover(img) {
+  ctx.drawImage(img, drawRect.x, drawRect.y, drawRect.w, drawRect.h);
+}
+
+// the hi-res anchor still must occupy the exact same rect as the canvas
+// draw, or the rest-point crossfade would jump between crop framings
+function syncStillRect() {
+  const s = anchorStill.style;
+  if (!drawRect.letterbox) {
+    s.left = s.top = '0';
+    s.right = s.bottom = '';
+    s.width = s.height = '100%';
+    return;
+  }
+  s.left = `${drawRect.x / dpr}px`;
+  s.top = `${drawRect.y / dpr}px`;
+  s.right = s.bottom = 'auto';
+  s.width = `${drawRect.w / dpr}px`;
+  s.height = `${drawRect.h / dpr}px`;
 }
 
 function nearestLoaded(from, dir) {
@@ -140,10 +180,21 @@ function warm(center) {
 
 let lastA = -1, lastB = -1, lastAlpha = -1;
 
+// scroll progress → fractional frame, piecewise per clip segment so every
+// anchor lands exactly on its locked boundary frame
+function frameFloatFor(p) {
+  let seg = 7;
+  for (let k = 1; k < 8; k++) {
+    if (p < FRACS[k]) { seg = k - 1; break; }
+  }
+  const local = clamp((p - FRACS[seg]) / (FRACS[seg + 1] - FRACS[seg]), 0, 1);
+  return (seg + local) * FPC;
+}
+
 // scrub = draw the frame below the playhead, dissolve the next one over it.
 // Both draws are synchronous, so this runs at display rate — no seeks.
 function draw(p) {
-  const fl = p * (SEQ_COUNT - 1);
+  const fl = frameFloatFor(p);
   let a = nearestLoaded(Math.floor(fl), -1);
   if (a < 0) a = nearestLoaded(Math.floor(fl) + 1, 1);
   if (a < 0) return;
@@ -152,6 +203,12 @@ function draw(p) {
   const alpha = b > a ? clamp((fl - a) / (b - a), 0, 1) : 0;
   if (a === lastA && b === lastB && Math.abs(alpha - lastAlpha) < 0.004) return;
   lastA = a; lastB = b; lastAlpha = alpha;
+  computeRect(frames[a]);
+  syncStillRect();
+  if (drawRect.letterbox) {
+    ctx.fillStyle = '#01060C';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
   ctx.globalAlpha = 1;
   drawCover(frames[a]);
   if (b !== a && alpha > 0.001) {
