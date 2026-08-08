@@ -271,6 +271,20 @@ html[data-mode="activating"] .activation { opacity: 1; }
 html[data-mode="cinema"] .poster,
 html[data-mode="activating"] .poster[data-done] { opacity: 0; }
 
+/* hi-res anchor still — crossfades over the paused video at every rest
+   point, so the "full stops" are pixel-crisp instead of 1080p-soft */
+.anchor-still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 260ms var(--ease-standard);
+  pointer-events: none;
+}
+.anchor-still.on { opacity: 1; }
+
 .stills img {
   position: absolute;
   inset: 0;

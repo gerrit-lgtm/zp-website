@@ -41,6 +41,7 @@ const rail = $('#rail');
 const burger = $('#burger');
 const endingEl = $('#ending');
 const replayEl = $('#replay');
+const anchorStill = $('#anchorStill');
 const messages = [...document.querySelectorAll('.msg')];
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -150,6 +151,8 @@ async function preloadMaster() {
   film.currentTime = 0.001;              // paint the lit frame beneath the activation layer
   masterReady = true;
   updateCue();
+  // warm the anchor stills so the rest-point crossfade is instant
+  FRACS.forEach((_, i) => { new Image().src = `/media/f${i + 1}.jpg`; });
 }
 
 async function preloadActivation() {
@@ -260,7 +263,30 @@ function applyFrame(p) {
   }
 }
 
+// The paused 1080p video frame reads soft on large/retina screens, so at
+// every rest point the hi-res 2560px still of that exact frame crossfades
+// in over the film; any scroll movement fades it back out. Hysteresis
+// keeps it from flickering right at the threshold.
+let stillIdx = -1;
+let stillOn = false;
+
+function updateAnchorStill(p) {
+  if (useStills) return;
+  const i = nearestAnchor(p);
+  const dist = Math.abs(p - FRACS[i]);
+  const on = stillOn ? dist < 0.006 : dist < 0.0035;
+  if (on && stillIdx !== i) {
+    anchorStill.src = `/media/f${i + 1}.jpg`;
+    stillIdx = i;
+  }
+  if (on !== stillOn) {
+    stillOn = on;
+    anchorStill.classList.toggle('on', on);
+  }
+}
+
 function updateOverlays(p) {
+  updateAnchorStill(p);
   // messages: fully present near their anchor, fading over the outer band — pure
   // function of scrub position, so the choreography reverses for free
   for (let m = 0; m < messages.length; m++) {
