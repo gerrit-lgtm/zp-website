@@ -242,7 +242,10 @@ html[data-sheet="open"] .sheet { opacity: 1; pointer-events: auto; }
 
 /* ---------- cinema stage ---------- */
 
-.cinema { height: 900vh; position: relative; }
+/* 60vh of scroll per transition — one gentle wheel flick crosses the carry
+   threshold and the camera glides you to the next world; readers aren't
+   asked to hand-crank 100vh per band */
+.cinema { height: 580vh; position: relative; }
 
 .stage {
   position: sticky;

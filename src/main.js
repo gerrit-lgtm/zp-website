@@ -503,10 +503,28 @@ function stepAutopan(now) {
   if (!autopan) return;
   const { from, to, start, dur } = autopan;
   const t = clamp((now - start) / dur, 0, 1);
-  const eased = dur > 900 ? easeInOutCubic(t) : easeOutCubic(t);
+  const eased = dur > 480 ? easeInOutCubic(t) : easeOutCubic(t);
   scrollTo(0, from + (to - from) * eased);
   if (t < 1) requestAnimationFrame(stepAutopan);
   else autopan = null;
+}
+
+// Directional carry: a settle must never fight the reader. Once a scroll
+// crosses CARRY_IN of a band in its direction of travel, idling glides
+// them forward to the next anchor — one gentle flick per world, instead
+// of hand-cranking a full band or being yanked back to the anchor they
+// just left. Pure function so the harness can assert it headlessly.
+const CARRY_IN = 0.18;
+
+function settleTarget(p, dir) {
+  let seg = 7;
+  for (let k = 1; k < 8; k++) {
+    if (p < FRACS[k]) { seg = k - 1; break; }
+  }
+  const local = (p - FRACS[seg]) / (FRACS[seg + 1] - FRACS[seg]);
+  if (dir > 0) return local > CARRY_IN ? seg + 1 : seg;
+  if (dir < 0) return local < 1 - CARRY_IN ? seg : seg + 1;
+  return local > 0.5 ? seg + 1 : seg;
 }
 
 function scheduleSettle() {
@@ -516,16 +534,24 @@ function scheduleSettle() {
     if (performance.now() - lastInputTs < 200) return scheduleSettle();
     const p = progress();
     if (p <= 0.002 || p >= 0.998) return;
-    const target = FRACS[nearestAnchor(p)] * travel;
+    const target = FRACS[settleTarget(p, lastDir)] * travel;
     const dist = Math.abs(target - scrollY);
     if (dist < 4) return;
-    // 220ms decel for short settles, stretched a little for longer travel
-    panTo(target, clamp(220 + (dist / vh) * 260, 220, 640));
-  }, 240);
+    // a cinematic carry through the world, not a yank
+    panTo(target, clamp(500 + (dist / vh) * 500, 500, 1200));
+  }, 260);
 }
 
+let lastY = 0;
+let lastDir = 0;
+
 addEventListener('scroll', () => {
-  if (!autopan) { lastInputTs = performance.now(); scheduleSettle(); }
+  if (!autopan) {
+    lastInputTs = performance.now();
+    lastDir = Math.sign(scrollY - lastY) || lastDir;
+    scheduleSettle();
+  }
+  lastY = scrollY;
 }, { passive: true });
 
 ['wheel', 'touchstart', 'keydown'].forEach((ev) =>
@@ -600,6 +626,6 @@ requestAnimationFrame(tick);
 // probe hook for scroll-sweep verification harnesses (headless panes defer
 // rAF + scroll events, so invariant checks drive the update directly)
 window.__zp = {
-  update, progress, measure, FRACS, seekToFrame,
+  update, progress, measure, FRACS, seekToFrame, settleTarget,
   seqLoaded: () => frames.filter(Boolean).length,
 };
