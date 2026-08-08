@@ -92,61 +92,76 @@ function nearestAnchor(p) {
 
 // ---------- preload ----------
 // The spec pins it: activation clip + master fully buffered before the
-// interaction unlocks. The master is fetched to a blob — every later seek
-// is then local and instant (no Range round-trips mid-scrub).
+// interaction unlocks. BOTH are fetched to blobs — iOS Safari ignores
+// preload="auto" and never fires canplaythrough for idle video, and a
+// blob src makes every later seek local and instant on every platform.
+const ACTIVATION_URL = '/media/activation.mp4';
 let masterReady = false;
 let activationReady = false;
-let fetchedFraction = 0;
+const bytesGot = { a: 0, m: 0 };
+const bytesTotal = { a: 3_000_000, m: small ? 13_400_000 : 30_000_000 };
 
 function updateCue() {
-  const pct = clamp(
-    fetchedFraction * 0.85 + (activationReady ? 0.15 : 0), 0, 1);
-  cueFill.style.width = `${Math.round(pct * 100)}%`;
+  const total = bytesTotal.a + bytesTotal.m;
+  const got = Math.min(bytesGot.a, bytesTotal.a) + Math.min(bytesGot.m, bytesTotal.m);
+  cueFill.style.width = `${Math.round(clamp(got / total, 0, 1) * 100)}%`;
   if (masterReady && activationReady) {
     doc.dataset.ready = '1';
     cueLabel.textContent = 'Scroll to activate';
   }
 }
 
+async function fetchBlobUrl(url, key) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(String(res.status));
+  const len = +res.headers.get('content-length');
+  if (len) bytesTotal[key] = len;
+  const reader = res.body.getReader();
+  const parts = [];
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parts.push(value);
+    bytesGot[key] += value.byteLength;
+    updateCue();
+  }
+  bytesGot[key] = bytesTotal[key];
+  return URL.createObjectURL(new Blob(parts, { type: 'video/mp4' }));
+}
+
+// catch up on readyState — with a blob src, metadata may land before a
+// listener registered after an await would fire.
+function awaitMetadata(video) {
+  return new Promise((resolve) => {
+    if (video.readyState >= 1) return resolve();
+    video.addEventListener('loadedmetadata', resolve, { once: true });
+  });
+}
+
 async function preloadMaster() {
   try {
-    const res = await fetch(MASTER_URL);
-    if (!res.ok) throw new Error(String(res.status));
-    const total = +res.headers.get('content-length') || 0;
-    const reader = res.body.getReader();
-    const parts = [];
-    let got = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      parts.push(value);
-      got += value.byteLength;
-      if (total) { fetchedFraction = got / total; updateCue(); }
-    }
-    film.src = URL.createObjectURL(new Blob(parts, { type: 'video/mp4' }));
+    film.src = await fetchBlobUrl(MASTER_URL, 'm');
   } catch {
     film.src = MASTER_URL;               // fall back to Range-based seeking
+    bytesGot.m = bytesTotal.m;
   }
-  fetchedFraction = 1;
-
-  // catch up on readyState — with a blob src, metadata may land before
-  // any listener registered after an await would fire.
-  await new Promise((resolve) => {
-    if (film.readyState >= 1) return resolve();
-    film.addEventListener('loadedmetadata', resolve, { once: true });
-  });
+  await awaitMetadata(film);
   filmDuration = film.duration;
   film.currentTime = 0.001;              // paint the lit frame beneath the activation layer
   masterReady = true;
   updateCue();
 }
 
-function preloadActivation() {
-  const arm = () => { activationReady = true; updateCue(); };
-  if (activation.readyState >= 4) return arm();
-  activation.addEventListener('canplaythrough', arm, { once: true });
-  // belt-and-braces: some engines stall canplaythrough for muted bg video
-  setTimeout(() => { if (activation.readyState >= 3) arm(); }, 6000);
+async function preloadActivation() {
+  try {
+    activation.src = await fetchBlobUrl(ACTIVATION_URL, 'a');
+  } catch {
+    activation.src = ACTIVATION_URL;
+    bytesGot.a = bytesTotal.a;
+  }
+  await awaitMetadata(activation);
+  activationReady = true;
+  updateCue();
 }
 
 // ---------- stills mode (reduced motion / data saver) ----------
@@ -198,6 +213,15 @@ function beginActivation() {
 
   activation.play().catch(() => {});
   poster.dataset.done = '1';
+
+  // prime the master's first frame inside this user-gesture context —
+  // iOS paints nothing for a paused pre-gesture seek, which would flash
+  // black at the activation → film handoff
+  film.addEventListener('timeupdate', () => {
+    film.pause();
+    film.currentTime = 0.001;
+  }, { once: true });
+  film.play().catch(() => {});
 
   // scroll during the light-up is absorbed — extra gestures just lean on the throttle
   const lean = () => {
@@ -267,17 +291,29 @@ function updateOverlays(p) {
   if (hintShown && p > 0.01) { hint.classList.remove('on'); hintShown = false; }
 }
 
-function update() {
+// Raw wheel input arrives in discrete jumps; mapping it 1:1 to video time
+// reads as jank. smoothP chases the scroll target on an exponential ease
+// (~110ms time constant, frame-rate independent), so steps become glides.
+let smoothP = 0;
+let lastTickTs = 0;
+
+function update(force) {
   if (mode !== 'cinema') return;
-  const p = progress();
-  applyFrame(p);
-  updateOverlays(p);
+  if (force) smoothP = progress();
+  applyFrame(smoothP);
+  updateOverlays(smoothP);
 }
 
-// rAF drives the continuous path, but scroll events drive it too — so the
-// scrub still follows when rAF is throttled (hidden panes, low-power modes)
-function tick() {
-  update();
+function tick(now) {
+  if (mode === 'cinema') {
+    const targetP = progress();
+    const dt = Math.min(now - lastTickTs || 16.7, 100);
+    smoothP += (targetP - smoothP) * (1 - Math.exp(-dt / 110));
+    if (Math.abs(targetP - smoothP) < 0.0004) smoothP = targetP;
+    applyFrame(smoothP);
+    updateOverlays(smoothP);
+  }
+  lastTickTs = now;
   requestAnimationFrame(tick);
 }
 
@@ -317,7 +353,6 @@ function scheduleSettle() {
 addEventListener('scroll', () => {
   lastScrollTs = performance.now();
   if (!autopan) { lastInputTs = lastScrollTs; scheduleSettle(); }
-  update();
 }, { passive: true });
 
 ['wheel', 'touchstart', 'keydown'].forEach((ev) =>
@@ -372,7 +407,6 @@ burger.addEventListener('click', () => {
 $('#sheet').hidden = false;
 
 // ---------- boot ----------
-film.addEventListener('seeked', update);   // always converge on the latest scroll position
 addEventListener('resize', measure);
 measure();
 armGate();
