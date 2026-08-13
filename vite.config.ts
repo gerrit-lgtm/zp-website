@@ -8,12 +8,9 @@ export default defineConfig({
     // media lives in public/ — never inline, never hash; the page references it by stable URL
     assetsInlineLimit: 4096,
     rollupOptions: {
-      input: {
-        // the scroll cinematic — the primary site
-        main: 'index.html',
-        // the static React CI hero, kept alongside at /hero for comparison
-        hero: 'hero.html',
-      },
+      // cinematic.html (the scroll-scrubbed film) is retired — the file and its
+      // src/main.js engine stay in the repo for reference but are not built.
+      input: { main: 'index.html' },
     },
   },
   server: {

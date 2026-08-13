@@ -19,6 +19,13 @@ export default {
         stormy: '#5A6F8A', // supporting — icons, dividers, borders
         cool: '#75787B', // neutral — muted text, disabled
         bright: '#F4F4F0', // content and contrast
+
+        // the extended dark ramp, sampled from the CI's own product renders,
+        // which run deeper than Peacoat so a full-bleed key visual carries light
+        void: '#060B14', // page + hero ground
+        abyss: '#0A121C', // section band
+        deep: '#0C141F', // card fill on dark
+        slate: '#151C24', // elevated CTA band
       },
       fontFamily: {
         // Plus Jakarta Sans for headings and brand statements, Inter for body/UI

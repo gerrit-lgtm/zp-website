@@ -3,11 +3,11 @@ import Button from './Button';
 
 /** The nav model drawn in the CI's website render (p.23). */
 const NAV_LINKS = [
-  { label: 'Solutions', hasMenu: true },
-  { label: 'Platform', hasMenu: false },
-  { label: 'Industries', hasMenu: false },
-  { label: 'Resources', hasMenu: false },
-  { label: 'Company', hasMenu: false },
+  { label: 'Solutions', href: '#worlds', hasMenu: true },
+  { label: 'Platform', href: '#platform', hasMenu: false },
+  { label: 'Industries', href: '#industries', hasMenu: false },
+  { label: 'Resources', href: '#worlds', hasMenu: false },
+  { label: 'Company', href: '#industries', hasMenu: false },
 ];
 
 /**
@@ -59,10 +59,10 @@ export default function Navbar() {
           className="ml-auto hidden items-center gap-7 zpDesktop:flex"
           aria-label="Primary"
         >
-          {NAV_LINKS.map(({ label, hasMenu }) => (
+          {NAV_LINKS.map(({ label, href, hasMenu }) => (
             <a
               key={label}
-              href="#"
+              href={href}
               className="group flex items-center gap-1.5 font-body text-sm text-bright/80 transition-colors duration-150 ease-standard hover:text-bright"
             >
               {label}
@@ -88,7 +88,7 @@ export default function Navbar() {
         <div className="ml-auto flex items-center gap-3 zpDesktop:ml-0">
           {/* mobile carries the menu control alone — the CTA returns at tablet (p.28) */}
           <div className="hidden zpTablet:block">
-            <Button variant="secondary" arrow compact>
+            <Button variant="secondary" arrow compact href="#contact">
               Contact Us
             </Button>
           </div>
@@ -118,10 +118,11 @@ export default function Navbar() {
       {menuOpen && (
         <div className="border-t border-white/[0.08] bg-[rgba(6,11,20,0.94)] px-4 pb-8 pt-2 backdrop-blur-md zpTablet:px-16 zpDesktop:hidden">
           <nav className="flex flex-col" aria-label="Primary">
-            {NAV_LINKS.map(({ label }) => (
+            {NAV_LINKS.map(({ label, href }) => (
               <a
                 key={label}
-                href="#"
+                href={href}
+                onClick={() => setMenuOpen(false)}
                 className="border-b border-white/[0.06] py-4 font-display text-xl font-semibold text-bright"
               >
                 {label}

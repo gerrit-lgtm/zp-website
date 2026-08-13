@@ -1,60 +1,72 @@
-import AnimatedHeading from './components/AnimatedHeading';
-import Button from './components/Button';
-import FadeIn from './components/FadeIn';
+import { lazy, Suspense, useMemo } from 'react';
 import HeroBackground from './components/HeroBackground';
 import Navbar from './components/Navbar';
+import CTABand from './sections/CTABand';
+import Clients from './sections/Clients';
+import Differentiators from './sections/Differentiators';
+import Footer from './sections/Footer';
+import Hero from './sections/Hero';
+import Worlds from './sections/Worlds';
 
 /**
- * The ZeroPoint hero, built to the website system in the CI (p.23), on the CI's
- * 12-column layout (p.26): 1168px content width, 96px desktop margins.
- *
- * Copy is verbatim from the guide — the two-clause headline whose second clause
- * is the payoff, the eyebrow that carries the positioning line, and the CI's own
- * two-tier CTA hierarchy (Explore Solutions primary, Book a Demo secondary).
+ * three.js is ~600kB of the bundle, and none of it is needed to paint the hero.
+ * Splitting it out lets the type and layout arrive first, and means a device
+ * without WebGL never downloads it at all.
  */
+const Scene = lazy(() => import('./three/Scene'));
+
+/** One probe, cached — never assume a visitor's device will give us a context. */
+function hasWebGL() {
+  try {
+    const c = document.createElement('canvas');
+    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
+  const webgl = useMemo(hasWebGL, []);
+
   return (
-    <div className="relative min-h-screen bg-[color:var(--zp-void)] text-bright">
-      <HeroBackground />
-      <Navbar />
+    <div className="relative bg-void text-bright">
+      {/*
+        The scene is fixed, so it persists across the hero and the four Worlds
+        and changes state as the reader descends. Sections further down carry
+        their own opaque surface and close it out — the immersion is the top of
+        the page, not a texture behind everything.
+      */}
+      <div className="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
+        {webgl ? (
+          <Suspense fallback={null}>
+            <Scene />
+          </Suspense>
+        ) : (
+          <HeroBackground />
+        )}
 
-      <main className="relative z-10 flex min-h-screen items-center">
-        <div className="mx-auto w-full max-w-content px-4 pb-16 pt-[72px] zpTablet:px-16 zpDesktop:px-0">
-          {/* the eyebrow: 12px, 0.18em tracking, the positioning line itself */}
-          <FadeIn delay={100} duration={800}>
-            <p className="mb-6 flex items-center gap-3 font-body text-xs font-semibold uppercase tracking-eyebrow text-stormy">
-              <span className="h-px w-7 shrink-0 bg-dazzling" />
-              The point where value begins
-            </p>
-          </FadeIn>
+        {/* protection is a gradient, never a capsule: a directional wash that
+            keeps the left columns legible over the moving scene */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(96deg, rgba(6,11,20,0.95) 10%, rgba(6,11,20,0.78) 34%, rgba(6,11,20,0.30) 60%, rgba(6,11,20,0) 82%)',
+          }}
+        />
+      </div>
 
-          <AnimatedHeading
-            text={'Sovereign AI Infrastructure.\nReal Business Value.'}
-            className="mb-6 font-display text-[clamp(29px,5.4vw,64px)] font-bold leading-[1.15] tracking-[-0.02em]"
-            delay={200}
-            charDelay={30}
-          />
-
-          {/* body large: Inter 500, 18/150%, never centred, two to three lines */}
-          <FadeIn delay={800} duration={1000}>
-            <p className="mb-9 max-w-[46ch] font-body text-base font-medium leading-[1.5] text-bright/70 zpTablet:text-lg">
-              Secure. Sovereign. Scalable. AI solutions engineered to transform business
-              value.
-            </p>
-          </FadeIn>
-
-          <FadeIn delay={1200} duration={1000}>
-            <div className="flex flex-col gap-4 zpTablet:flex-row zpTablet:flex-wrap">
-              <Button variant="primary" arrow fullWidthOnMobile>
-                Explore Solutions
-              </Button>
-              <Button variant="secondary" fullWidthOnMobile>
-                Book a Demo
-              </Button>
-            </div>
-          </FadeIn>
-        </div>
-      </main>
+      <div className="relative z-10">
+        <Navbar />
+        <main>
+          <Hero />
+          <Worlds />
+          <Differentiators />
+          <Clients />
+          <CTABand />
+        </main>
+        <Footer />
+      </div>
     </div>
   );
 }

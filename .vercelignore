@@ -4,3 +4,7 @@ node_modules
 CI
 tools
 *.zip
+
+# the scroll cinematic is retired; its 214MB of frames and clips would
+# otherwise be copied into dist on every build. Remove this line to restore it.
+public/media
