@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * ZeroPoint CI — global foundations.
+ *
+ * The palette, type and geometry live in tailwind.config.js. What stays here is
+ * the page ground, the two brand rules that are not utilities (the focus ring
+ * and the full-stop flourish), and the dark ramp sampled from the CI's own hero
+ * renders, which run deeper than Peacoat so a full-bleed key visual can carry
+ * its own light.
+ */
+:root {
+  --zp-void: #060B14; /* the hero ground in the CI's website render */
+  --zp-focus-ring: rgba(43, 87, 154, 0.4);
+}
+
+body {
+  font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+  font-weight: 400;
+  background-color: var(--zp-void);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* CI section 03 — a single Dazzling Blue full stop after the final word is the
+   only decorative typographic flourish in the system. */
+.zp-stop {
+  color: theme('colors.dazzling');
+}
+
+/* Kerning does not cross element boundaries, and the heading is split into one
+   span per character so it can be staggered. The pair "<letter>." loses its kern
+   most visibly — and this brand ends every headline on a full stop — so put the
+   optical space back. */
+.zp-kern-stop {
+  margin-left: -0.05em;
+}
+
+/* CI component standards — a 3px ring at 40%, offset, on every control. Never
+   removed. */
+*:focus-visible {
+  outline: 3px solid var(--zp-focus-ring);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+::selection {
+  background: theme('colors.dazzling');
+  color: theme('colors.bright');
+}

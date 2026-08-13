@@ -325,6 +325,43 @@ async function preloadActivation() {
   updateCue();
 }
 
+// ---------- hero headline ----------
+// The display line wipes in character by character on a 30ms cascade. The split
+// happens here rather than in the markup so the page still ships the headline
+// as real text for crawlers and the no-JS fallback. Words stay whole
+// (inline-block) so the line can still break at real spaces on narrow screens.
+const CHAR_MS = 30;
+const CHAR_BASE_MS = 200;
+
+function splitHeadline() {
+  const title = document.querySelector('.hero-title[data-split]');
+  if (!title) return;
+  let n = 0;
+  title.querySelectorAll('.hero-line').forEach((line) => {
+    const frag = document.createDocumentFragment();
+    for (const chunk of line.textContent.trim().split(/(\s+)/)) {
+      if (!chunk) continue;
+      if (/^\s+$/.test(chunk)) { frag.append(' '); continue; }
+      const word = document.createElement('span');
+      word.className = 'hero-word';
+      for (const ch of chunk) {
+        const span = document.createElement('span');
+        span.className = 'hero-char';
+        span.style.animationDelay = `${CHAR_BASE_MS + n++ * CHAR_MS}ms`;
+        span.textContent = ch;
+        word.append(span);
+      }
+      frag.append(word);
+    }
+    line.replaceChildren(frag);
+  });
+  // the closing full stop in Dazzling Blue — the system's one flourish
+  const chars = title.querySelectorAll('.hero-char');
+  const last = chars[chars.length - 1];
+  if (last?.textContent === '.') last.classList.add('hero-stop');
+  title.dataset.split = 'done';
+}
+
 // ---------- stills mode (reduced motion / data saver) ----------
 let stillEls = [];
 function buildStills() {
@@ -402,6 +439,14 @@ function enterCinema() {
   measure();
   hint.classList.add('on');
   hintShown = true;
+
+  // a hero CTA or nav link clicked while dormant queued a destination —
+  // fly there now that the camera exists
+  if (pendingSeek > 0) {
+    const i = pendingSeek;
+    pendingSeek = -1;
+    panTo(FRACS[i] * travel, 2400);
+  }
 }
 
 // ---------- scrub loop ----------
@@ -561,9 +606,18 @@ addEventListener('scroll', () => {
   }, { passive: true }));
 
 // nav links, dots, brand, replay — everything seeks the camera
+let pendingSeek = -1;
+
 function seekToFrame(i, dur) {
-  if (mode !== 'cinema') return;
   closeSheet();
+  if (mode !== 'cinema') {
+    // clicked from the hero: light the chamber, then continue to that world
+    if (mode === 'boot' && activationReady && tier0Done) {
+      pendingSeek = i;
+      beginActivation();
+    }
+    return;
+  }
   panTo(FRACS[i] * measure(), dur);
 }
 
@@ -611,6 +665,7 @@ addEventListener('resize', () => {
   if (mode === 'cinema' && !useStills) { sizeCanvas(); draw(smoothP); }
 });
 measure();
+splitHeadline();
 armGate();
 
 if (useStills) {
