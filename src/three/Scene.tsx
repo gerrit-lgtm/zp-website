@@ -110,11 +110,17 @@ function Iris({ phase }: { phase: React.MutableRefObject<Phase> }) {
     }
     if (offset.current) {
       // Landscape puts the mechanism right of centre so the left columns stay
-      // clear for type, as the CI's hero does. Portrait has no room for that, so
-      // it centres and sits behind the copy instead.
+      // clear for type, as the CI's hero does.
+      //
+      // Portrait has no horizontal room for that, so it lifts the mechanism
+      // clear of the copy block and stands it down a little instead. Centring it
+      // parks the optic squarely behind the headline's last word, which is where
+      // the brand's Dazzling Blue full stop lives — the one flourish in the
+      // system, and it disappeared against the bead.
       const wide = viewport.aspect > 1.2;
       offset.current.position.x = wide ? 0.9 : 0;
-      offset.current.position.y = wide ? -0.05 : 0.15;
+      offset.current.position.y = wide ? -0.05 : 1.05;
+      offset.current.scale.setScalar(wide ? 1 : 0.72);
     }
   });
 
