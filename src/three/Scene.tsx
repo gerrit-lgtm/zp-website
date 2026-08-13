@@ -1,19 +1,21 @@
-import { useMemo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { buildIris, IRIS_RADIUS } from './iris';
 import { band, chase, smooth, usePrefersReducedMotion, useScrollProgressRef } from '../lib/scroll';
 
 /**
  * The ZeroPoint scene.
  *
- * The object is the identity itself, in three dimensions: the outer ring is the
- * zero — "a closed, complete boundary" — five blades sweep the aperture, and a
- * round optic holds the point at (0,0). Scroll drives it through the four
- * Worlds, so the geometry carries the argument rather than decorating it:
+ * The object is the identity itself: the machined iris mechanism from
+ * `./iris.ts` — outer ring as the closed boundary, five blades taken from the
+ * mark and instanced at exactly 72°, a round optic holding the point at (0,0).
+ * Scroll drives it through the four Worlds, so the geometry carries the argument
+ * rather than decorating it:
  *
  *   hero      the iris at rest, rim-lit, the origin alight
  *   World 01  a hex shell closes over it — sealed and self-contained
- *   World 02  the shell clears and the blades open — clarity before code
+ *   World 02  the shell clears and the blades swing open — clarity before code
  *   World 03  a belt of ventures takes up the orbit
  *   World 04  the belt condenses to a constellation and the camera settles back
  *
@@ -25,14 +27,50 @@ const DAZZLING = '#2B579A';
 const RIM = '#7FA8F0';
 const CORE = '#DCE8FF';
 
-/** Where each World sits along page progress. */
-const W1 = [0.14, 0.36] as const;
-const W2 = [0.34, 0.56] as const;
-const W3 = [0.54, 0.76] as const;
-const W4 = [0.74, 0.96] as const;
+/**
+ * Where each World sits along page progress.
+ *
+ * Measured from the `[data-world]` panels rather than hardcoded, because the
+ * whole premise is that the geometry and the copy advance together — and a
+ * hardcoded band silently drifts the moment a paragraph is added.
+ *
+ * Each band *completes* as its panel reaches the centre of the viewport, so a
+ * reader sitting on World 01's copy sees the shell fully sealed rather than
+ * half-sealed. It then holds at 1 while they scroll past, and the next world's
+ * band takes the frame over.
+ *
+ * Falls back to an even split if the panels are not in the DOM.
+ */
+type Band = readonly [number, number];
+
+function measureWorldBands(): Band[] {
+  const els = Array.from(document.querySelectorAll<HTMLElement>('[data-world]'));
+  const max = document.documentElement.scrollHeight - window.innerHeight;
+  if (!els.length || max <= 0) {
+    return [
+      [0.14, 0.36],
+      [0.34, 0.56],
+      [0.54, 0.76],
+      [0.74, 0.96],
+    ];
+  }
+  return els.map((el) => {
+    const h = el.offsetHeight;
+    const centre = el.offsetTop + h / 2 - window.innerHeight / 2;
+    return [(centre - h * 0.9) / max, centre / max] as Band;
+  });
+}
+
+/**
+ * The mechanism is modelled at true scale (Ø 260 mm). The camera work and the
+ * phase tuning are all expressed against a unit-radius object, so the group is
+ * scaled to put the outer ring at radius ~1 rather than re-deriving every
+ * distance in millimetres.
+ */
+const FIT = 1 / IRIS_RADIUS;
 
 type Phase = {
-  /** 0 = iris closed, 1 = fully open */
+  /** 0 = blades at rest in the mark's own position, 1 = swung fully open */
   open: number;
   /** 0 → 1 as the hex shell seals */
   shell: number;
@@ -44,46 +82,48 @@ type Phase = {
 };
 
 function Iris({ phase }: { phase: React.MutableRefObject<Phase> }) {
-  const group = useRef<THREE.Group>(null);
-  const blades = useRef<THREE.Group>(null);
-  const optic = useRef<THREE.Mesh>(null);
-
-  // five blades, each a curved sweep — the aperture "through which compute
-  // becomes product". Built once; only their rotation animates.
-  // The arc overlaps the 72° spacing, the way the blades overlap in the mark. Five
-  // coplanar arcs would fuse into a single ring, so each one is offset in depth
-  // and tilted — the overlap has to read as layering, not as a circle.
-  const bladeGeometry = useMemo(() => new THREE.TorusGeometry(0.72, 0.052, 12, 96, 1.5), []);
+  const offset = useRef<THREE.Group>(null);
+  const spinner = useRef<THREE.Group>(null);
+  const scaler = useRef<THREE.Group>(null);
+  const iris = useMemo(buildIris, []);
+  const { viewport } = useThree();
 
   useFrame((_, dt) => {
     const p = phase.current;
-    if (blades.current) {
-      // opening rolls every blade back off the centre together
-      const target = -0.42 - p.open * 0.72;
-      blades.current.children.forEach((child, i) => {
-        const base = (i / 5) * Math.PI * 2;
-        child.rotation.z = chase(child.rotation.z, base + target, dt, 0.22);
-      });
+
+    // each blade swings about its own post, the way a real iris opens — the
+    // stack does not spin about the centre
+    const swing = p.open * 0.36;
+    iris.bladePivots.forEach((pivot, k) => {
+      pivot.rotation.z = chase(pivot.rotation.z, iris.bladeHome[k] + swing, dt, 0.22);
+    });
+
+    // the optic is the point of light, not a grey bead — it lifts further as the
+    // aperture clears a path for it
+    iris.materials.optic.emissiveIntensity = 1.4 + p.open * 1.4;
+
+    if (spinner.current) spinner.current.rotation.z = p.spin * 0.35;
+    if (scaler.current) {
+      // the mechanism recedes as the ventures take the frame
+      const target = FIT * (1 - p.belt * 0.16 - p.swarm * 0.1);
+      scaler.current.scale.setScalar(chase(scaler.current.scale.x, target, dt, 0.3));
     }
-    if (group.current) {
-      group.current.rotation.z = p.spin * 0.35;
-      // the iris recedes as the ventures take the frame
-      const s = 1 - p.belt * 0.16 - p.swarm * 0.1;
-      group.current.scale.setScalar(chase(group.current.scale.x, s, dt, 0.3));
-    }
-    if (optic.current) {
-      const mat = optic.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.55 + p.open * 0.45;
+    if (offset.current) {
+      // Landscape puts the mechanism right of centre so the left columns stay
+      // clear for type, as the CI's hero does. Portrait has no room for that, so
+      // it centres and sits behind the copy instead.
+      const wide = viewport.aspect > 1.2;
+      offset.current.position.x = wide ? 0.9 : 0;
+      offset.current.position.y = wide ? -0.05 : 0.15;
     }
   });
 
   return (
-    <group ref={group}>
-      {/* the zero — the complete boundary */}
-      <mesh>
-        <torusGeometry args={[1, 0.009, 8, 160]} />
-        <meshBasicMaterial color={RIM} transparent opacity={0.75} />
-      </mesh>
+    <group ref={offset}>
+    <group ref={spinner}>
+      <group ref={scaler} scale={FIT}>
+        <primitive object={iris.group} />
+      </group>
 
       {/* concentric rings: focus, expansion, the ripple of value creation */}
       <mesh>
@@ -95,35 +135,12 @@ function Iris({ phase }: { phase: React.MutableRefObject<Phase> }) {
         <meshBasicMaterial color={DAZZLING} transparent opacity={0.18} />
       </mesh>
 
-      <group ref={blades}>
-        {[0, 1, 2, 3, 4].map((i) => (
-          <mesh
-            key={i}
-            geometry={bladeGeometry}
-            position={[0, 0, (i - 2) * 0.028]}
-            rotation={[0.06, 0, 0]}
-          >
-            <meshStandardMaterial
-              color="#121D2E"
-              metalness={0.9}
-              roughness={0.22}
-              emissive={DAZZLING}
-              emissiveIntensity={0.35}
-            />
-          </mesh>
-        ))}
-      </group>
-
-      {/* the origin (0,0) — where value begins. toneMapped off so the core stays
-          hot instead of being rolled off by the filmic curve. */}
-      <mesh ref={optic}>
-        <sphereGeometry args={[0.105, 48, 48]} />
-        <meshBasicMaterial color={CORE} transparent opacity={0.9} toneMapped={false} />
-      </mesh>
+      {/* the bloom around the origin — the system's one glow */}
       <mesh>
-        <sphereGeometry args={[0.26, 32, 32]} />
-        <meshBasicMaterial color={RIM} transparent opacity={0.12} toneMapped={false} />
+        <sphereGeometry args={[0.32, 32, 32]} />
+        <meshBasicMaterial color={RIM} transparent opacity={0.1} toneMapped={false} />
       </mesh>
+    </group>
     </group>
   );
 }
@@ -136,13 +153,10 @@ function HexShell({ phase }: { phase: React.MutableRefObject<Phase> }) {
     const m = mesh.current;
     if (!m) return;
     const s = phase.current.shell;
-    const target = 0.2 + s * 1.35;
-    m.scale.setScalar(chase(m.scale.x, target, dt, 0.28));
+    m.scale.setScalar(chase(m.scale.x, 0.2 + s * 1.35, dt, 0.28));
     m.rotation.y += dt * 0.12;
     m.rotation.x = 0.3;
-    const mat = m.material as THREE.MeshBasicMaterial;
-    // fades in as it seals, and clears again for World 02
-    mat.opacity = s * 0.5;
+    (m.material as THREE.MeshBasicMaterial).opacity = s * 0.5;
     m.visible = s > 0.01;
   });
 
@@ -192,22 +206,19 @@ function OrbitBelt({ phase }: { phase: React.MutableRefObject<Phase> }) {
         Math.sin(a) * r * (1 - p.swarm * 0.35) + s.tilt * (1 - p.swarm) * 1.4,
         Math.sin(a * 1.7) * s.tilt * 1.6 + p.swarm * 0.4,
       );
-      const sc = s.size * (0.5 + show * 0.5) * (1 + p.swarm * 0.9);
-      dummy.scale.setScalar(sc);
+      dummy.scale.setScalar(s.size * (0.5 + show * 0.5) * (1 + p.swarm * 0.9));
       dummy.rotation.set(a, a * 0.7, 0);
       dummy.updateMatrix();
       m.setMatrixAt(i, dummy.matrix);
     });
     m.instanceMatrix.needsUpdate = true;
-
-    const mat = m.material as THREE.MeshBasicMaterial;
-    mat.opacity = 0.35 + show * 0.55;
+    (m.material as THREE.MeshBasicMaterial).opacity = 0.35 + show * 0.55;
   });
 
   return (
     <instancedMesh ref={inst} args={[undefined, undefined, COUNT]}>
       <octahedronGeometry args={[1, 0]} />
-      <meshBasicMaterial color={CORE} transparent opacity={0} />
+      <meshBasicMaterial color={CORE} transparent opacity={0} toneMapped={false} />
     </instancedMesh>
   );
 }
@@ -217,16 +228,33 @@ function Rig({ phase }: { phase: React.MutableRefObject<Phase> }) {
   const progress = useScrollProgressRef();
   const reduced = usePrefersReducedMotion();
   const smoothed = useRef(0);
+  const bands = useRef<Band[]>([]);
+
+  useEffect(() => {
+    const remeasure = () => {
+      bands.current = measureWorldBands();
+    };
+    // the panels are min-height in vh, so their offsets move with the viewport
+    remeasure();
+    const id = window.setTimeout(remeasure, 300); // after fonts settle the layout
+    window.addEventListener('resize', remeasure);
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener('resize', remeasure);
+    };
+  }, []);
 
   useFrame(({ camera }, dt) => {
     const raw = progress.current;
     smoothed.current = reduced ? raw : chase(smoothed.current, raw, dt, 0.22);
     const p = smoothed.current;
 
-    const w1 = smooth(band(p, W1[0], W1[1]));
-    const w2 = smooth(band(p, W2[0], W2[1]));
-    const w3 = smooth(band(p, W3[0], W3[1]));
-    const w4 = smooth(band(p, W4[0], W4[1]));
+    const b = bands.current;
+    const at = (i: number) => (b[i] ? smooth(band(p, b[i][0], b[i][1])) : 0);
+    const w1 = at(0);
+    const w2 = at(1);
+    const w3 = at(2);
+    const w4 = at(3);
 
     phase.current.shell = w1 * (1 - w2); // seals, then clears for clarity
     phase.current.open = w2 * (1 - w3 * 0.5);
@@ -234,8 +262,8 @@ function Rig({ phase }: { phase: React.MutableRefObject<Phase> }) {
     phase.current.swarm = w4;
     phase.current.spin = reduced ? 0 : p * 2.4;
 
-    // the camera never reverses direction mid-band: it eases out, in, then back
-    const z = 3.25 - w1 * 0.35 + w2 * 0.1 + w3 * 0.75 + w4 * 0.45;
+    // the camera never reverses direction mid-band: it eases in, then back out
+    const z = 4.15 - w1 * 0.35 + w2 * 0.1 + w3 * 0.75 + w4 * 0.45;
     const y = 0.06 + w2 * 0.12 - w4 * 0.16;
     camera.position.x = 0;
     camera.position.y = reduced ? 0 : y;
@@ -260,14 +288,20 @@ export default function Scene() {
     <Canvas
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: true }}
-      camera={{ fov: 42, position: [0, 0, 3.25] }}
+      camera={{ fov: 42, position: [0, 0, 4.15] }}
       // the scene is scenery: it must never eat a scroll or a click
       style={{ pointerEvents: 'none' }}
     >
-      {/* one strong directional source, per the CI's photography rules */}
-      <ambientLight intensity={0.35} />
-      <directionalLight position={[-3, 2.5, 2.5]} intensity={2.2} color={RIM} />
-      <pointLight position={[0, 0, 0.4]} intensity={2.4} color={CORE} distance={3} />
+      {/*
+        One strong directional source from the upper left, as the CI's
+        photography rules require, plus a dim cool counter-light so the far side
+        of the mechanism does not fall to black. No warm fill and no ground
+        plane — this is a void, not a studio.
+      */}
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[-3.2, 2.6, 2.6]} intensity={2.8} color={RIM} />
+      <directionalLight position={[3.5, -1.5, -2]} intensity={0.5} color={DAZZLING} />
+      <pointLight position={[0, 0, 0.35]} intensity={1.8} color={CORE} distance={2.6} />
 
       <Rig phase={phase} />
       <Iris phase={phase} />

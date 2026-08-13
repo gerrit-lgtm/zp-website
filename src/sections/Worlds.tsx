@@ -76,10 +76,12 @@ const WORLDS: World[] = [
 ];
 
 /** A fixed index of the four worlds — the CI's precision motif as navigation. */
-function WorldRail({ active }: { active: number }) {
+function WorldRail({ active }: { active: number | null }) {
   return (
     <ol
-      className="pointer-events-none fixed right-5 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-4 zpDesktop:flex"
+      className={`pointer-events-none fixed right-5 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-4 transition-opacity duration-[220ms] ease-standard zpDesktop:flex ${
+        active === null ? 'opacity-0' : 'opacity-100'
+      }`}
       aria-hidden="true"
     >
       {WORLDS.map((w, i) => (
@@ -103,18 +105,25 @@ function WorldRail({ active }: { active: number }) {
 }
 
 export default function Worlds() {
-  const [active, setActive] = useState(0);
+  /** null = the reader is not inside the Worlds, so the rail stays hidden */
+  const [active, setActive] = useState<number | null>(null);
   const panels = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => {
+    // Track the whole intersecting set rather than reacting to single entries:
+    // scrolling back above the first panel produces only a *leave*, so a
+    // last-one-wins handler would strand the rail on whichever world was last
+    // seen — which is how it ended up reading "The Team" over the hero.
+    const live = new Set<number>();
     const io = new IntersectionObserver(
       (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            const i = panels.current.indexOf(e.target as HTMLElement);
-            if (i >= 0) setActive(i);
-          }
-        });
+        for (const e of entries) {
+          const i = panels.current.indexOf(e.target as HTMLElement);
+          if (i < 0) continue;
+          if (e.isIntersecting) live.add(i);
+          else live.delete(i);
+        }
+        setActive(live.size ? Math.min(...live) : null);
       },
       // fire when a panel owns the middle of the viewport
       { rootMargin: '-45% 0px -45% 0px' },
@@ -146,6 +155,8 @@ export default function Worlds() {
           ref={(el) => {
             panels.current[i] = el;
           }}
+          // the 3D scene measures these to align its phases with the copy
+          data-world={w.n}
           className="flex min-h-[86vh] items-center py-16"
           aria-labelledby={`world-${w.n}`}
         >

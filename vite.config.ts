@@ -10,7 +10,11 @@ export default defineConfig({
     rollupOptions: {
       // cinematic.html (the scroll-scrubbed film) is retired — the file and its
       // src/main.js engine stay in the repo for reference but are not built.
-      input: { main: 'index.html' },
+      input: {
+        main: 'index.html',
+        // the iris asset viewer / exporter — noindex, for producing the GLB
+        iris: 'iris.html',
+      },
     },
   },
   server: {

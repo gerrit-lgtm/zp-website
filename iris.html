@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ZeroPoint iris mechanism — 3D</title>
+  <meta name="robots" content="noindex" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    html, body { margin: 0; height: 100%; background: #071019; }
+    three-d-stage:not(:defined) { visibility: hidden; }
+    .spec {
+      position: fixed; left: 40px; top: 40px; z-index: 5;
+      pointer-events: none; user-select: none;
+      color: #F4F4F0; max-width: 340px;
+    }
+    .spec .eyebrow {
+      font: 500 12px/1.33 Inter, sans-serif; letter-spacing: .18em;
+      color: #5A6F8A; margin: 0 0 16px;
+    }
+    .spec h1 {
+      font: 600 28px/1.3 "Plus Jakarta Sans", sans-serif; letter-spacing: -.01em;
+      margin: 0 0 12px;
+    }
+    .spec p { font: 400 14px/1.43 Inter, sans-serif; color: #96A3B4; margin: 0 0 6px; }
+    .spec p b { color: #F4F4F0; font-weight: 500; }
+    .spec .rule { width: 40px; height: 1px; background: rgba(244,244,240,.18); margin: 20px 0; }
+    .spec .loop { font: 400 14px/1.5 Inter, sans-serif; color: #96A3B4; }
+    .spec .loop b { color: #2B579A; font-weight: 500; }
+    @media (max-width: 760px) { .spec { left: 24px; top: 24px; max-width: 60%; } }
+  </style>
+
+  <script type="module" src="/src/iris-viewer.ts"></script>
+</head>
+<body>
+  <div class="spec">
+    <p class="eyebrow">ZEROPOINT · 3D ASSET</p>
+    <h1>Iris mechanism</h1>
+    <p><b>Ø 260 mm</b> · outer ring, five blades, centre optic</p>
+    <p>Blade profile taken from the mark, instanced five times</p>
+    <div class="rule"></div>
+    <p class="loop">Five-fold symmetry is exact by construction — spin it <b>72.000°</b> about Z for a frame-perfect loop.</p>
+  </div>
+
+  <three-d-stage name="zeropoint-iris" background="#071019" autorotate></three-d-stage>
+</body>
+</html>
