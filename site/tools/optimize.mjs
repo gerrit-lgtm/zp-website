@@ -16,7 +16,7 @@ const doc = await io.read('build-src/armored_suit.glb');
  * the chest into a floodlight that swallows the headline. Rolling the top of the
  * highlight range down keeps the trim reading as white against the dark armour while
  * leaving it room to be lit. Done to the texture so every stop inherits it. */
-async function compressHighlights(tex, knee = 0.70, ceiling = 0.72) {
+async function compressHighlights(tex, knee = 0.62, ceiling = 0.56) {
   const { data, info } = await sharp(Buffer.from(tex.getImage()))
     .raw().toBuffer({ resolveWithObject: true });
   const ch = info.channels;

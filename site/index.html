@@ -7,7 +7,6 @@
 <meta name="description" content="Secure. Sovereign. Scalable. Managed AI video, private AI agents and advisory, delivered onshore by one accountable operator.">
 <meta name="theme-color" content="#01060C">
 <link rel="icon" href="assets/brand/zeropoint-icon-white.svg" type="image/svg+xml">
-<!-- Share card is a real frame off the rig (WP0). Swap to an absolute URL on deploy. -->
 <meta property="og:type" content="website">
 <meta property="og:title" content="ZeroPoint — Sovereign AI infrastructure. Real business value.">
 <meta property="og:description" content="Managed AI video, private AI agents and advisory, delivered onshore by one accountable operator.">
@@ -25,170 +24,184 @@
 </head>
 <body>
 
-<a class="skip-link" href="#credo">Skip to content</a>
+<a class="skip-link" href="#contact">Skip to contact</a>
 
-<div id="stage" aria-hidden="true"></div>
+<!-- The whole experience lives in one fixed viewport; .scroll only supplies the length
+     the phases are keyed against. -->
+<div class="scroll" id="scroll">
+  <div class="viewport">
 
-<div id="loader">
-  <img class="mark" src="assets/brand/zeropoint-icon-white.svg" alt="">
-  <div class="bar"><i></i></div>
-  <p class="pct" role="status">Loading <span data-pct>0</span>%</p>
+    <div class="bg" id="bg" aria-hidden="true"></div>
+
+    <a class="brand ph" id="brand" href="#top" aria-label="ZeroPoint — home">
+      <img src="assets/brand/zeropoint-icon-white.svg" alt="" width="810" height="800">
+      <span>ZeroPoint</span>
+    </a>
+
+    <header class="nav ph" id="nav">
+      <nav aria-label="Primary">
+        <ul>
+          <li><a href="#solutions">Solutions</a></li>
+          <li><a href="#platform">Platform</a></li>
+          <li><a href="#company">Company</a></li>
+          <li><a href="#contact" data-cta>Contact</a></li>
+        </ul>
+      </nav>
+      <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="sheet">
+        <i></i><i></i><i></i>
+      </button>
+    </header>
+
+    <div class="sheet" id="sheet">
+      <nav aria-label="Menu">
+        <ul>
+          <li><a href="#solutions" data-close>Solutions</a></li>
+          <li><a href="#platform" data-close>Platform</a></li>
+          <li><a href="#company" data-close>Company</a></li>
+          <li><a href="#contact" data-close>Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+
+    <!-- Phase 1 -->
+    <section class="hero glass ph" id="hero" aria-labelledby="hero-h">
+      <span class="hero__kicker">The point where value begins</span>
+      <h1 class="hero__title" id="hero-h">Sovereign AI infrastructure. Real business value.</h1>
+      <p class="hero__sub">Secure, sovereign and scalable AI — engineered onshore, governed end to end, and measured in outcomes rather than experiments.</p>
+      <button class="hero__cta" id="cta" aria-label="Explore solutions">
+        <svg viewBox="0 0 40 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M29.5 4.5L37 12m0 0l-7.5 7.5M37 12H3"/>
+        </svg>
+      </button>
+    </section>
+
+    <!-- Phase 2 -->
+    <section class="cards" id="cards" aria-label="Solutions" hidden>
+      <article class="card glass ph" id="card1">
+        <div class="card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2.5" y="4.5" width="19" height="15" rx="1"/>
+            <path stroke-linecap="round" d="M10 9.5l4.5 2.5L10 14.5z"/>
+          </svg>
+        </div>
+        <p class="card__index">01 — Solutions</p>
+        <h2 class="card__title">Zero Point Studio</h2>
+        <p class="card__desc">Managed AI video and content production. Brief in, broadcast-ready master out — produced on our own pipeline, at a price per asset you can plan around.</p>
+        <ul class="card__chips">
+          <li>R20.02 master</li>
+          <li>R3,500–25,000 / asset</li>
+        </ul>
+      </article>
+
+      <article class="card glass ph" id="card2">
+        <div class="card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="2.6"/><circle cx="4.5" cy="6" r="2"/><circle cx="4.5" cy="18" r="2"/>
+            <circle cx="19.5" cy="6" r="2"/><circle cx="19.5" cy="18" r="2"/>
+            <path stroke-linecap="round" d="M6.3 7.1l3.5 3.3M6.3 16.9l3.5-3.3M17.7 7.1l-3.5 3.3M17.7 16.9l-3.5-3.3"/>
+          </svg>
+        </div>
+        <p class="card__index">02 — Solutions</p>
+        <h2 class="card__title">Zero Point Enterprise</h2>
+        <p class="card__desc">Private AI agents and workflow builds that run inside your estate. Every build ships against acceptance gates, delivered by specialists who stay accountable for the outcome.</p>
+        <ul class="card__chips">
+          <li>Acceptance gates</li>
+          <li>200 specialists</li>
+        </ul>
+      </article>
+
+      <article class="card glass ph" id="card3">
+        <div class="card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 20h18M6 20V11m5 9V5.5m5 14.5v-6.5"/>
+          </svg>
+        </div>
+        <p class="card__index">03 — Consulting</p>
+        <h2 class="card__title">Zero Point Advisory</h2>
+        <p class="card__desc">AI readiness, governance and workflow economics — the work that decides whether a build pays for itself. Extended into B-BBEE procurement and enterprise &amp; supplier development.</p>
+        <ul class="card__chips">
+          <li>Readiness &amp; governance</li>
+          <li>B-BBEE &amp; ESD</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- Phase 3 -->
+    <section class="say" id="say" aria-label="What we stand for" hidden>
+      <div class="say__inner">
+        <p class="ph" id="say1">Technology is never the destination. <span class="pill">Value</span> is.</p>
+        <p class="ph" id="say2">One accountable <span class="pill">operator</span> — 3,000 onshore GPUs, POPIA residency, governed workflows.</p>
+        <p class="ph" id="say3">Built by the people who <span class="pill">stand</span> behind it — with Agile Bridge, ontbytSAKE, GigaBrain and B4i.</p>
+      </div>
+    </section>
+
+    <!-- Phase 4 -->
+    <section class="contact" id="contact" aria-labelledby="contact-h" hidden>
+      <div class="contact__card ph" id="contactCard">
+        <img src="assets/brand/zeropoint-icon-white.svg" alt="" width="810" height="800">
+        <h2 id="contact-h">The point where value begins.</h2>
+        <p class="contact__sub">Talk to an expert — managed AI video, private agents and advisory, delivered onshore.</p>
+        <form id="form" novalidate>
+          <label class="u-sr" for="email">Your work email</label>
+          <input id="email" name="email" type="email" inputmode="email" autocomplete="email" required placeholder="name@company.co.za">
+          <button type="submit" id="submit">Request a call</button>
+        </form>
+        <p class="contact__note" id="note" role="status" aria-live="polite"></p>
+        <div class="contact__foot">
+          <a href="mailto:hello@zeropoint.africa">hello@zeropoint.africa</a>
+          <span>zeropoint.africa</span>
+        </div>
+      </div>
+    </section>
+
+    <p class="cue ph" id="cue" aria-hidden="true"><i></i>Scroll</p>
+
+    <div id="loader">
+      <img class="mark" src="assets/brand/zeropoint-icon-white.svg" alt="" width="810" height="800">
+      <div class="bar"><i></i></div>
+      <p role="status">Loading experience <span data-pct>0</span>%</p>
+    </div>
+
+  </div>
 </div>
 
-<header class="nav">
-  <a class="nav__home" href="#hero" aria-label="ZeroPoint — home">
-    <img src="assets/brand/zeropoint-wordmark-white.svg" alt="ZeroPoint" width="1660" height="150">
-  </a>
-  <nav aria-label="Primary">
-    <ul class="nav__links">
-      <li><a href="#studio">Solutions</a></li>
-      <li><a href="#core">Platform</a></li>
-      <li><a href="#team">Company</a></li>
+<!-- Served to anything without WebGL or without JS: the same content, as a plain page. -->
+<main class="fallback" id="top">
+  <header>
+    <p class="hero__kicker">The point where value begins</p>
+    <h1>Sovereign AI infrastructure. Real business value.</h1>
+    <p style="margin-top:18px">Secure, sovereign and scalable AI — engineered onshore, governed end to end, and measured in outcomes rather than experiments.</p>
+  </header>
+
+  <section id="solutions">
+    <h2>Solutions</h2>
+    <p><strong>Zero Point Studio</strong> — managed AI video and content production. Brief in, broadcast-ready master out, at a price per asset you can plan around.</p>
+    <p style="margin-top:14px"><strong>Zero Point Enterprise</strong> — private AI agents and workflow builds that run inside your estate, shipped against acceptance gates.</p>
+    <p style="margin-top:14px"><strong>Zero Point Advisory</strong> — AI readiness, governance and workflow economics, extended into B-BBEE procurement and enterprise &amp; supplier development.</p>
+  </section>
+
+  <section id="platform">
+    <h2>The sovereign core</h2>
+    <p>One accountable operator.</p>
+    <ul>
+      <li>3,000 onshore GPUs</li>
+      <li>POPIA data residency</li>
+      <li>Governed workflows and an audited baseline</li>
+      <li>Onshore delivery, metered usage</li>
     </ul>
-  </nav>
-  <a class="nav__cta" href="#close">Contact us <span aria-hidden="true">→</span></a>
-</header>
-
-<nav class="rail" aria-label="Sections">
-  <ul id="rail-list"></ul>
-</nav>
-
-<!-- Scroll length only: the ride is 1,160vh, the eight camera stops are keyed off it. -->
-<div id="scroll" aria-hidden="true"></div>
-
-<main>
-
-  <!-- WP0 · FACE · 0–8% -->
-  <section class="beat beat--left" id="hero" data-beat="wp0" data-vh="100" aria-labelledby="hero-h">
-    <div>
-      <span class="eyebrow">The point where value begins</span>
-      <h1 class="h-display statement" id="hero-h">Sovereign AI infrastructure. Real business value.</h1>
-      <p class="lede" style="margin-top:22px">Secure, sovereign and scalable AI — engineered onshore, governed end to end, and measured in outcomes rather than experiments.</p>
-      <div class="actions">
-        <a class="btn btn--primary" href="#studio">Explore solutions <span aria-hidden="true">→</span></a>
-        <a class="btn btn--ghost" href="#close">Book a demo</a>
-      </div>
-    </div>
-    <p class="cue" aria-hidden="true"><i></i>Scroll</p>
   </section>
 
-  <!-- T1 · DESCENT · 8–18% -->
-  <section class="beat beat--centre" id="credo" data-beat="wp1" data-vh="120" aria-labelledby="credo-h">
-    <div>
-      <h2 class="h1 statement statement--wide" id="credo-h">Technology is never the destination. Value is.</h2>
-      <ul class="chips" aria-label="Proof points">
-        <li>R20.02 / master</li>
-        <li>600 frames in 18.1 s</li>
-        <li>97 sign-ups, week one</li>
-      </ul>
-    </div>
+  <section id="company">
+    <h2>Who stands behind it</h2>
+    <p>Leadership: Gerrit Steenkamp &amp; Deon Fourie (co-CEOs), Rob Hersov, Louis McLaren.</p>
+    <p style="margin-top:14px">Partners: Agile Bridge · ontbytSAKE · GigaBrain · B4i.</p>
+    <p style="margin-top:14px">Foundry: stage-gated co-building, for revenue share or equity.</p>
   </section>
 
-  <!-- WP2a · RIGHT HAND · 18–32% -->
-  <section class="beat beat--left" id="studio" data-beat="wp2a" data-vh="160" aria-labelledby="studio-h">
-    <div class="panel">
-      <p class="panel__index">01 — Solutions</p>
-      <h2 class="h2" id="studio-h">Zero Point Studio</h2>
-      <p class="lede">Managed AI video and content production. Brief in, broadcast-ready master out — produced on our own pipeline, at a price per asset you can plan around.</p>
-      <ul class="chips">
-        <li>R20.02 master</li>
-        <li>R3,500–25,000 / asset</li>
-      </ul>
-      <p class="actions"><a class="btn btn--link" href="#close">Learn more <span aria-hidden="true">→</span></a></p>
-    </div>
+  <section>
+    <h2>Talk to an expert</h2>
+    <p><a href="mailto:hello@zeropoint.africa">hello@zeropoint.africa</a> · zeropoint.africa</p>
   </section>
-
-  <!-- WP2b · RIGHT HAND, tighter · 32–44% -->
-  <section class="beat beat--left" id="enterprise" data-beat="wp2b" data-vh="160" aria-labelledby="ent-h">
-    <div class="panel">
-      <p class="panel__index">02 — Solutions</p>
-      <h2 class="h2" id="ent-h">Zero Point Enterprise</h2>
-      <p class="lede">Private AI agents and workflow builds that run inside your estate. Every build ships against acceptance gates, delivered by specialists who stay accountable for the outcome.</p>
-      <ul class="chips">
-        <li>Acceptance gates</li>
-        <li>200 specialists</li>
-      </ul>
-      <p class="actions"><a class="btn btn--link" href="#close">Learn more <span aria-hidden="true">→</span></a></p>
-    </div>
-  </section>
-
-  <!-- WP3 · CHEST · 44–58% — the brand beat -->
-  <section class="beat beat--centre" id="core" data-beat="wp3" data-vh="160" aria-labelledby="core-h">
-    <div class="core">
-      <span class="eyebrow">The sovereign core</span>
-      <h2 class="h1 statement statement--wide" id="core-h">One accountable operator.</h2>
-      <!-- Stats split either side, per storyboard F5: the centre column stays empty so
-           the chest — and the iris that lights up on this stop — is never covered. -->
-      <div class="core__split">
-        <ul class="stats stats--rail" role="list">
-          <li><dl><dt>Compute</dt><dd>3,000 onshore GPUs</dd></dl></li>
-          <li><dl><dt>Data</dt><dd>POPIA residency</dd></dl></li>
-          <li><dl><dt>Delivery</dt><dd>Governed workflows</dd></dl></li>
-        </ul>
-        <ul class="stats stats--rail" role="list">
-          <li><dl><dt>Security</dt><dd>Audited baseline</dd></dl></li>
-          <li><dl><dt>Operations</dt><dd>Onshore delivery</dd></dl></li>
-          <li><dl><dt>Commercials</dt><dd>Metered usage</dd></dl></li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <!-- WP4 · LEFT HAND · 58–72% -->
-  <section class="beat beat--right" id="advisory" data-beat="wp4" data-vh="170" aria-labelledby="adv-h">
-    <div class="panel">
-      <p class="panel__index">03 — Consulting</p>
-      <h2 class="h2" id="adv-h">Zero Point Advisory</h2>
-      <p class="lede">AI readiness, governance and workflow economics — the work that decides whether a build pays for itself. Extended into B-BBEE procurement and enterprise &amp; supplier development.</p>
-      <ul class="chips">
-        <li>Readiness &amp; governance</li>
-        <li>Workflow economics</li>
-        <li>B-BBEE procurement &amp; ESD</li>
-      </ul>
-      <p class="actions"><a class="btn btn--link" href="#close">Learn more <span aria-hidden="true">→</span></a></p>
-    </div>
-  </section>
-
-  <!-- WP5 · FEET · 72–86% -->
-  <section class="beat beat--centre" id="team" data-beat="wp5" data-vh="160" aria-labelledby="team-h">
-    <div>
-      <span class="eyebrow eyebrow--muted">Standing behind it</span>
-      <h2 class="h2" id="team-h">Who stands behind it</h2>
-      <dl class="roster">
-        <div class="roster__row">
-          <dt>Leadership</dt>
-          <dd>Gerrit Steenkamp &amp; Deon Fourie <span>— co-CEOs</span> · Rob Hersov · Louis McLaren</dd>
-        </div>
-        <div class="roster__row">
-          <dt>Partners</dt>
-          <dd>Agile Bridge · ontbytSAKE · GigaBrain · B4i</dd>
-        </div>
-        <div class="roster__row">
-          <dt>Foundry</dt>
-          <dd>Stage-gated co-building, for revenue share or equity</dd>
-        </div>
-      </dl>
-    </div>
-  </section>
-
-  <!-- WP6 · PULL-BACK · 86–100% -->
-  <section class="beat beat--centre" id="close" data-beat="wp6" data-vh="130" aria-labelledby="close-h">
-    <div>
-      <h2 class="h-display statement statement--wide" id="close-h">The point where value begins.</h2>
-      <div class="actions">
-        <a class="btn btn--primary" href="mailto:hello@zeropoint.africa">Talk to an expert <span aria-hidden="true">→</span></a>
-      </div>
-      <footer class="foot">
-        <img src="assets/brand/zeropoint-wordmark-white.svg" alt="ZeroPoint" width="1660" height="150">
-        <a href="#studio">Solutions</a>
-        <a href="#core">Platform</a>
-        <a href="#team">Company</a>
-        <a href="mailto:hello@zeropoint.africa">hello@zeropoint.africa</a>
-        <span class="foot__end">zeropoint.africa</span>
-      </footer>
-    </div>
-  </section>
-
 </main>
 
 <script type="module" src="js/main.js"></script>

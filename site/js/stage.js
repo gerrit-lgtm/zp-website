@@ -89,7 +89,7 @@ export class Stage {
     this.reduced = reducedMotion;
     this.fov = FOV;
     this.clock = new THREE.Clock();
-    this.beats = { holoA: 0, holoB: 0, cards: 0, iris: 0, ground: 0, dust: 0 };
+    this.glow = 0;   // 0..1, how lit the chest mark is; driven from scroll
     this.cur = null;   // damped camera state
     this.ready = false;
     this.logoMats = [];
@@ -204,15 +204,6 @@ export class Stage {
     this.chestLight.position.set(0.24, ANCHORS.chestDisc[1], 0);
     this.scene.add(this.chestLight);
 
-    // One practical per hand, brought up with that hand's hologram so the slab looks
-    // projected rather than pasted next to the palm.
-    this.handLight = { R: null, L: null };
-    for (const [k, a] of [['R', ANCHORS.handR], ['L', ANCHORS.handL]]) {
-      const l = new THREE.PointLight(BLUE_BRIGHT, 0, 0.4, 2);
-      l.position.set(a[0] + 0.06, a[1] + 0.03, a[2]);
-      this.handLight[k] = l;
-      this.scene.add(l);
-    }
 
     // Catches the contact shadow. Invisible except where the figure occludes the key.
     this.shadowFloor = new THREE.Mesh(
@@ -227,169 +218,32 @@ export class Stage {
 
   /* --------------------------------------------------------------------- props */
 
-  /** Hologram surfaces are drawn to canvas so the copy stays crisp and on-brand. */
-  #slabTexture(draw) {
-    const W = 1024, H = 640;
-    const c = document.createElement('canvas');
-    c.width = W; c.height = H;
-    const g = c.getContext('2d');
-
-    // Glass body: a gradient rather than a flat fill, so the slab has a light direction.
-    const body = g.createLinearGradient(0, 0, W * 0.4, H);
-    body.addColorStop(0, 'rgba(16,38,74,0.66)');
-    body.addColorStop(1, 'rgba(4,12,26,0.60)');
-    g.fillStyle = body;
-    g.beginPath(); g.roundRect(8, 8, W - 16, H - 16, 26); g.fill();
-
-    // Scanlines — the cheapest honest signal that a surface is a projection.
-    g.save();
-    g.beginPath(); g.roundRect(8, 8, W - 16, H - 16, 26); g.clip();
-    g.fillStyle = 'rgba(123,164,240,0.055)';
-    for (let y = 12; y < H; y += 4) g.fillRect(8, y, W - 16, 1);
-    g.restore();
-
-    g.strokeStyle = 'rgba(123,164,240,0.80)'; g.lineWidth = 3;
-    g.beginPath(); g.roundRect(8, 8, W - 16, H - 16, 26); g.stroke();
-
-    // Corner brackets, so the frame reads as an instrument and not a rounded rectangle.
-    g.strokeStyle = 'rgba(180,208,255,0.95)'; g.lineWidth = 5;
-    const B = 46;
-    for (const [x, y, dx, dy] of [[26, 26, 1, 1], [W - 26, 26, -1, 1], [26, H - 26, 1, -1], [W - 26, H - 26, -1, -1]]) {
-      g.beginPath();
-      g.moveTo(x, y + dy * B); g.lineTo(x, y); g.lineTo(x + dx * B, y);
-      g.stroke();
-    }
-
-    draw(g, W, H);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = this.maxAniso;
-    return tex;
-  }
-
-  #slab(tex, w, h) {
-    const m = new THREE.Mesh(
-      new THREE.PlaneGeometry(w, h),
-      new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }),
-    );
-    m.visible = false;
-    return m;
-  }
-
+  /* The only props left are the two that ground the figure. The earlier build carried
+     palm holograms and fanned cards for its eight discrete stops; this structure has one
+     continuous background instead, so they were removed rather than left hidden. */
   #props() {
-    const label = (g, text, x, y, size, color, weight = 600, track = 0) => {
-      g.fillStyle = color;
-      g.font = `${weight} ${size}px "Plus Jakarta Sans", system-ui, sans-serif`;
-      if (!track) { g.fillText(text, x, y); return; }
-      let cx = x;
-      for (const ch of text) { g.fillText(ch, cx, y); cx += g.measureText(ch).width + track; }
-    };
-
-    // WP2a — a render pipeline mid-flight: what Studio actually does.
-    const texA = this.#slabTexture((g, W) => {
-      label(g, 'ZERO POINT STUDIO', 54, 100, 30, 'rgba(150,186,250,0.95)', 600, 5);
-      label(g, 'R20.02 / master', 54, 184, 62, '#F4F4F0', 700);
-      g.fillStyle = 'rgba(244,244,240,0.18)';
-      g.fillRect(54, 240, W - 108, 4);
-      g.fillStyle = '#5A8BE8';
-      g.fillRect(54, 240, (W - 108) * 0.78, 4);
-      label(g, '600 frames · 18.1 s', 54, 296, 28, 'rgba(178,192,212,0.95)', 500);
-      for (let i = 0; i < 12; i++) {
-        const x = 54 + (i % 6) * 156, y = 348 + Math.floor(i / 6) * 130;
-        g.fillStyle = i < 9 ? 'rgba(59,111,212,0.34)' : 'rgba(244,244,240,0.07)';
-        g.beginPath(); g.roundRect(x, y, 136, 108, 10); g.fill();
-        g.strokeStyle = i < 9 ? 'rgba(140,180,250,0.62)' : 'rgba(244,244,240,0.14)';
-        g.lineWidth = 2; g.stroke();
-      }
-    });
-
-    // WP2b — the same slab, swapped to an agent graph. Camera holds; content changes.
-    const texB = this.#slabTexture((g, W, H) => {
-      label(g, 'ZERO POINT ENTERPRISE', 54, 100, 30, 'rgba(150,186,250,0.95)', 600, 5);
-      label(g, 'Private agents', 54, 180, 56, '#F4F4F0', 700);
-      const nodes = [[190, 330], [430, 270], [430, 406], [670, 330], [880, 260], [880, 410]];
-      g.strokeStyle = 'rgba(140,180,250,0.58)'; g.lineWidth = 3;
-      for (const [a, b] of [[0, 1], [0, 2], [1, 3], [2, 3], [3, 4], [3, 5]]) {
-        g.beginPath(); g.moveTo(...nodes[a]); g.lineTo(...nodes[b]); g.stroke();
-      }
-      nodes.forEach(([x, y], i) => {
-        g.fillStyle = i === 3 ? '#5A8BE8' : 'rgba(6,18,38,0.95)';
-        g.strokeStyle = 'rgba(150,186,250,0.9)'; g.lineWidth = 3;
-        g.beginPath(); g.arc(x, y, 30, 0, Math.PI * 2); g.fill(); g.stroke();
-      });
-      label(g, 'Acceptance gates · 200 specialists', 54, H - 92, 30, 'rgba(178,192,212,0.95)', 500);
-    });
-
-    // Sized against the frame the camera holds at this stop (0.40 world units tall):
-    // a prop in the hand's orbit, not a billboard the hand happens to be near.
-    this.holoA = this.#slab(texA, 0.155, 0.097);
-    this.holoB = this.#slab(texB, 0.155, 0.097);
-    const hand = ANCHORS.handR;
-    for (const s of [this.holoA, this.holoB]) {
-      s.position.set(hand[0] + 0.10, hand[1] + 0.075, hand[2] - 0.060);
-      this.scene.add(s);
-    }
-
-    // WP4 — three cards fanning off the left palm: the advisory offer.
-    this.cards = new THREE.Group();
-    ['AI readiness', 'Governance', 'Workflow economics'].forEach((title, i) => {
-      const tex = this.#slabTexture((g, W, H) => {
-        label(g, `0${i + 1}`, 54, 224, 46, 'rgba(150,186,250,0.9)', 700, 4);
-        label(g, title, 54, 356, 74, '#F4F4F0', 700);
-        g.fillStyle = 'rgba(90,139,232,0.55)';
-        g.beginPath(); g.roundRect(54, 416, 260, 10, 5); g.fill();
-      });
-      const card = this.#slab(tex, 0.115, 0.072);
-      // Fan up and outboard (+Z is screen-left, the side this hand is on). Kept tight:
-      // spread toward the camera magnifies the far cards and pushes them out of frame.
-      card.position.set(0.055 + i * 0.012, 0.018 + i * 0.045, 0.018 + i * 0.026);
-      card.rotation.set(0, 0, (i - 1) * 0.10);
-      card.visible = false;
-      this.cards.add(card);
-    });
-    this.cards.position.set(ANCHORS.handL[0], ANCHORS.handL[1], ANCHORS.handL[2]);
-    this.scene.add(this.cards);
-
-    // WP5 — the ground the figure stands on, lit only where it is standing.
     const gc = document.createElement('canvas');
     gc.width = gc.height = 256;
     const gg = gc.getContext('2d');
     const rg = gg.createRadialGradient(128, 128, 0, 128, 128, 128);
-    rg.addColorStop(0, 'rgba(74,120,205,0.70)');
-    rg.addColorStop(0.30, 'rgba(38,74,136,0.26)');
-    rg.addColorStop(0.62, 'rgba(20,40,84,0.09)');
+    rg.addColorStop(0, 'rgba(74,120,205,0.55)');
+    rg.addColorStop(0.32, 'rgba(38,74,136,0.20)');
+    rg.addColorStop(0.66, 'rgba(20,40,84,0.07)');
     rg.addColorStop(1, 'rgba(1,6,12,0)');
     gg.fillStyle = rg; gg.fillRect(0, 0, 256, 256);
     const gtex = new THREE.CanvasTexture(gc);
     gtex.colorSpace = THREE.SRGBColorSpace;
+
     this.ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.0, 2.0),
-      new THREE.MeshBasicMaterial({ map: gtex, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }),
+      new THREE.PlaneGeometry(2.2, 2.2),
+      new THREE.MeshBasicMaterial({
+        map: gtex, transparent: true, opacity: 0.5,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      }),
     );
     this.ground.rotation.x = -Math.PI / 2;
     this.ground.position.set(0, FIGURE.groundY + 0.004, 0);
     this.scene.add(this.ground);
-
-    // Dust settling on that ground — motion at the one stop that would otherwise be still.
-    const N = 190;
-    this.dustRise = 0.16;
-    const pos = new Float32Array(N * 3);
-    this.dustSeed = new Float32Array(N);
-    for (let i = 0; i < N; i++) {
-      const r = Math.sqrt(Math.random()) * 0.6, a = Math.random() * Math.PI * 2;
-      pos[i * 3] = Math.cos(a) * r;
-      pos[i * 3 + 1] = FIGURE.groundY + Math.random() * this.dustRise;
-      pos[i * 3 + 2] = Math.sin(a) * r;
-      this.dustSeed[i] = Math.random();
-    }
-    const dg = new THREE.BufferGeometry();
-    dg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    this.dust = new THREE.Points(dg, new THREE.PointsMaterial({
-      color: 0x9dbdf5, size: 0.0038, transparent: true, opacity: 0,
-      blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
-    }));
-    this.dust.visible = false;
-    this.scene.add(this.dust);
   }
 
   /* --------------------------------------------------------------------- load */
@@ -562,7 +416,8 @@ export class Stage {
     }
   }
 
-  setBeats(b) { Object.assign(this.beats, b); }
+  /** How lit the chest mark is, 0..1. The camera lands on it, so scroll drives it. */
+  setGlow(v) { this.glow = v < 0 ? 0 : v > 1 ? 1 : v; }
 
   frame() {
     if (!this.goal) return;
@@ -591,61 +446,21 @@ export class Stage {
       this.figure.rotation.y = Math.sin(t * 0.21) * 0.011;
     }
 
-    this.#beats(t);
+    this.#mark(t);
     if (this.grade) this.grade.uniforms.uTime.value = t;
     (this.comp ?? this.renderer).render(this.scene, this.camera);
   }
 
-  #beats(t) {
-    const b = this.beats;
-    const face = (m, v) => { m.visible = v > 0.002; m.material.opacity = v; };
-
-    // Slabs rise out of the palm and turn to meet the camera.
-    for (const [slab, v] of [[this.holoA, b.holoA], [this.holoB, b.holoB]]) {
-      face(slab, v);
-      if (!slab.visible) continue;
-      const hand = ANCHORS.handR;
-      const wide = (this.aspect ?? 1) >= 1;
-      slab.position.x = hand[0] + (wide ? 0.10 : 0.07);
-      slab.position.z = hand[2] - (wide ? 0.060 : 0.005);
-      slab.position.y = hand[1] + 0.048 + 0.030 * v + (this.reduced ? 0 : Math.sin(t * 0.9) * 0.003);
-      slab.lookAt(this.camera.position);
+  #mark(t) {
+    if (!this.logo) return;
+    const lit = this.glow;
+    for (const m of this.logoMats) {
+      // Emissive is absolute, so these stay low: the scene is lit brightly, and the optic
+      // clips to a white blob the moment it is pushed.
+      m.emissiveIntensity = /optic/i.test(m.name) ? 0.12 + lit * 0.9 : lit * 0.30;
     }
-    this.handLight.R.intensity = Math.max(b.holoA, b.holoB) * 0.38;
-
-    this.cards.visible = b.cards > 0.002;
-    this.cards.children.forEach((card, i) => {
-      // Staggered fan: each card waits its turn, 18% of the beat apart.
-      const v = Math.max(0, Math.min(1, (b.cards - i * 0.18) / 0.55));
-      card.visible = v > 0.002;
-      card.material.opacity = v;
-      card.scale.setScalar(0.9 + v * 0.1);
-      if (card.visible) card.lookAt(this.camera.position);
-    });
-    this.handLight.L.intensity = b.cards * 0.38;
-
-    // The mark: always seated on the chest, lit only as far as the stop asks.
-    if (this.logo) {
-      const lit = b.iris;
-      for (const m of this.logoMats) {
-        m.emissiveIntensity = /optic/i.test(m.name) ? 0.12 + lit * 0.9 : lit * 0.30;
-      }
-      if (!this.reduced) this.logoSpin.rotation.y = t * 0.18;
-    }
-    this.chestLight.intensity = b.iris * 0.22;
-    if (this.mesh) this.mesh.material.emissiveIntensity = 1.15 + b.iris * 0.2;
-
-    face(this.ground, b.ground * 0.42);
-    this.dust.visible = b.dust > 0.002;
-    this.dust.material.opacity = b.dust * 0.20;
-    if (this.dust.visible && !this.reduced) {
-      const p = this.dust.geometry.attributes.position;
-      const rise = this.dustRise;
-      for (let i = 0; i < this.dustSeed.length; i++) {
-        const s = this.dustSeed[i];
-        p.array[i * 3 + 1] = FIGURE.groundY + ((s * rise + t * 0.012 * (0.4 + s)) % rise);
-      }
-      p.needsUpdate = true;
-    }
+    if (!this.reduced) this.logoSpin.rotation.y = t * 0.18;
+    this.chestLight.intensity = lit * 0.22;
+    if (this.mesh) this.mesh.material.emissiveIntensity = 1.15 + lit * 0.2;
   }
 }
