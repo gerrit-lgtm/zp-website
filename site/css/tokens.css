@@ -3,11 +3,15 @@
    motion.css, semantic.css. Only the tokens this site actually consumes are carried
    over; nothing is re-derived or re-sampled here. */
 
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap");
 
 :root {
   --zp-font-display: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
   --zp-font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  /* Editorial display layer. Not in the CI type spec — added because the reference's
+     luxury read is carried entirely by high-contrast display type. Revert to
+     --zp-font-display to return to strict CI. */
+  --zp-font-editorial: "Instrument Serif", "Iowan Old Style", Georgia, serif;
 
   /* Named brand palette (CI p.11) */
   --zp-peacoat: #192231;

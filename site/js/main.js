@@ -13,8 +13,7 @@
  * without JS, and .rig-on is only added once the stage is actually up.
  */
 
-import { Stage } from './stage.js';
-import { sample } from './rig.js';
+import { Film } from './film.js';
 
 const root = document.documentElement;
 const bg = document.getElementById('bg');
@@ -41,6 +40,28 @@ const phases = {
 const cards = [el('card1'), el('card2'), el('card3')];
 const says = [el('say1'), el('say2'), el('say3')];
 const contactCard = el('contactCard');
+
+/* Split the statements into words so they can resolve one at a time. Done in JS rather than
+   the markup so the HTML stays readable and the copy stays editable as sentences. */
+for (const node of says) {
+  const html = node.innerHTML;
+  node.innerHTML = html.replace(/(<span class="pill">.*?<\/span>)|([^\s<]+)/g,
+    (m, pill, word) => pill ? `<w>${pill}</w>` : (word ? `<w>${word}</w>` : m));
+}
+const words = says.map(n => [...n.querySelectorAll('w')]);
+
+/* The progress rail: four numbered stops that fill as each phase passes. */
+const STOPS = [
+  { n: '01', label: 'Sovereign AI', from: 0.00, to: 0.20 },
+  { n: '02', label: 'Solutions', from: 0.12, to: 0.58 },
+  { n: '03', label: 'What we stand for', from: 0.42, to: 0.95 },
+  { n: '04', label: 'Talk to us', from: 0.90, to: 1.00 },
+];
+const rail = el('rail');
+rail.innerHTML = STOPS.map(s => `<div class="rail__stop"><span class="rail__n">${s.n}</span><span class="rail__bar"><i></i></span></div>`).join('');
+const railStops = [...rail.querySelectorAll('.rail__stop')];
+const railFills = [...rail.querySelectorAll('.rail__bar i')];
+const metaLabel = el('metaLabel'), metaPct = el('metaPct');
 
 /**
  * Write one element's dissolve state. The blur is what makes this read as the reference
@@ -69,11 +90,23 @@ const goTo = frac => scrollTo({ top: span() * frac, behavior: reduced ? 'auto' :
 
 /* -------------------------------------------------------------------- loop */
 
-const stage = new Stage(bg, { reducedMotion: reduced });
+const film = new Film(bg, { reducedMotion: reduced });
 
 function paint() {
   const p = clamp01(scrollY / span());
-  stage.apply(sample(p));
+  film.seek(p);
+
+  // Rail + readout: where you are, and how far in.
+  STOPS.forEach((st, i) => {
+    const f = ramp(p, st.from, st.to);
+    railFills[i].style.setProperty('--fill', `${f * 100}%`);
+    railStops[i].toggleAttribute('data-on', p >= st.from - 0.01 && p <= st.to + 0.02);
+  });
+  const active = STOPS.findLast(st => p >= st.from - 0.01) ?? STOPS[0];
+  // Before he wakes, the readout says so — it is the same beat as the render.
+  const label = p < 0.10 ? 'Dormant' : active.label;
+  if (metaLabel.textContent !== label) metaLabel.textContent = label;
+  metaPct.textContent = String(Math.round(p * 100)).padStart(2, '0');
 
   /* --- Phase 1: hero card, nav and brand peel away, staggered like the reference. */
   let f = ramp(p, 0, 0.15);
@@ -117,10 +150,26 @@ function paint() {
     ];
     says.forEach((node, i) => {
       const [a, b, c, d] = T[i];
-      const enter = ramp(p, a, b), exit = ramp(p, c, d);
-      const v = Math.min(enter, 1 - exit);
-      // Arrives from below, leaves upward, so the sequence always reads as forward.
-      dissolve(node, v, 0, (1 - enter) * 120 - exit * 120, (1 - v) * 20);
+      const exit = ramp(p, c, d);
+      // The block leaves as one, but arrives word by word: each word has its own slice of
+      // the entrance, so the sentence resolves in reading order.
+      node.style.opacity = 1;
+      node.style.filter = 'none';
+      node.style.transform = `translate3d(0, ${-exit * 120}px, 0)`;
+      const ws = words[i];
+      // The whole stagger has to finish well inside the phase. Spreading it over a fixed
+      // 0.55 of scroll was longer than the phase itself, so the last words of a sentence
+      // never arrived at all.
+      const spread = (c - a) * 0.42;
+      const slot = spread / Math.max(1, ws.length);
+      const dwell = Math.max(0.02, (b - a) * 0.8);
+      ws.forEach((w, k) => {
+        const enter = ramp(p, a + k * slot, a + k * slot + dwell);
+        const v = Math.min(enter, 1 - exit);
+        w.style.opacity = v;
+        w.style.transform = `translate3d(0, ${(1 - enter) * 26}px, 0)`;
+        w.style.filter = v > 0.98 ? 'none' : `blur(${(1 - v) * 12}px)`;
+      });
     });
   }
 
@@ -132,11 +181,6 @@ function paint() {
     dissolve(contactCard, enter, 0, (1 - enter) * 120, (1 - enter) * 20);
   }
 
-  // The mark peaks on the brand statement — the one moment nothing is covering the chest —
-  // and stays lit through to the close.
-  stage.setGlow(ramp(p, 0.56, 0.70));
-
-  stage.frame();
 }
 
 let running = true;
@@ -201,7 +245,7 @@ form?.addEventListener('submit', e => {
   note.textContent = 'Thank you — we will be in touch within one business day.';
 });
 
-addEventListener('resize', () => stage.resize(), { passive: true });
+addEventListener('resize', () => film.resize(), { passive: true });
 document.addEventListener('visibilitychange', () => { running = !document.hidden; });
 
 /* --------------------------------------------------------------------- start */
@@ -213,29 +257,20 @@ const setPct = v => {
 };
 
 try {
-  // Two LODs. A phone has no use for 965k triangles at 390px wide, and it is the device
-  // least able to afford an 11 MB download.
-  const lite = innerWidth < 900
-    || (navigator.deviceMemory ?? 8) <= 4
-    || navigator.connection?.saveData === true;
-  await stage.load(lite ? 'assets/zp-figure-lite.glb' : 'assets/zp-figure.glb', setPct);
-  await stage.loadLogo('assets/zp-logo.glb', setPct);
+  await film.load(setPct);
   setPct(1);
 
   root.classList.add('rig-on');
-  stage.resize();
-  stage.apply(sample(clamp01(scrollY / span())), true);
+  film.resize();
   paint();
   requestAnimationFrame(tick);
 
   loader.classList.add('is-done');
   setTimeout(() => { loader.hidden = true; }, 900);
-  // Lighting is tuned by eye against rendered frames; ?debug exposes the stage to
-  // tools/sweep.mjs. Opt-in only.
-  if (location.search.includes('debug')) window.__zp = { stage };
+  if (location.search.includes('debug')) window.__zp = { film };
 } catch (err) {
-  // No WebGL, or the asset failed: the flat page underneath is the product.
-  console.warn('[zeropoint] stage unavailable, serving the flat page —', err);
+  // Frames unavailable: the flat page underneath is the product.
+  console.warn('[zeropoint] film unavailable, serving the flat page —', err);
   bg.remove();
   loader.hidden = true;
 }

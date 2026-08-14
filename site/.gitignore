@@ -3,3 +3,22 @@ build-src/*.glb
 tools/final
 tools/verify
 tools/live
+
+# Render intermediates and inputs — all regenerable, and together ~470 MB, which is enough
+# to make `git push` disconnect mid-pack.
+render/seq/
+render/look*/
+render/bg*/
+render/act*/
+render/smoke/
+render/hdri*/
+render/*.png
+!render/hdri/CREDIT.txt
+
+# Screenshot output from the verification harness.
+tools/final/
+tools/verify/
+tools/live/
+tools/phases/
+tools/ref/
+tools/[a-h][0-9]/

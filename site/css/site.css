@@ -31,7 +31,8 @@ body {
   overflow-x: hidden;
 }
 
-h1, h2, h3 { font-family: var(--zp-font-display); color: var(--zp-bright-white); margin: 0; }
+h1, h2, h3 { font-family: var(--zp-font-editorial); color: var(--zp-bright-white); margin: 0; font-weight: 400; }
+em { font-style: italic; }
 p { margin: 0; }
 img, svg { max-width: 100%; height: auto; }
 
@@ -117,9 +118,9 @@ img, svg { max-width: 100%; height: auto; }
 }
 .brand img { width: clamp(28px, 2.6vw, 40px); }
 .brand span {
-  font-family: var(--zp-font-display);
-  font-size: clamp(19px, 1.8vw, 26px);
-  font-weight: 700;
+  font-family: var(--zp-font-editorial);
+  font-size: clamp(21px, 2.1vw, 30px);
+  font-weight: 400;
   letter-spacing: -0.02em;
   color: var(--zp-bright-white);
 }
@@ -198,9 +199,9 @@ img, svg { max-width: 100%; height: auto; }
 .sheet a {
   display: block;
   padding: 10px 24px;
-  font-family: var(--zp-font-display);
-  font-size: clamp(30px, 8vw, 42px);
-  font-weight: 700;
+  font-family: var(--zp-font-editorial);
+  font-size: clamp(34px, 9vw, 48px);
+  font-weight: 400;
   letter-spacing: -0.02em;
   color: var(--zp-bright-white);
   text-decoration: none;
@@ -209,15 +210,33 @@ img, svg { max-width: 100%; height: auto; }
 
 /* ---------------------------------------------------------------- glass */
 
-/* The reference's card: white-tinted glass over the scene, heavy blur, hairline border,
-   square corners. Kept lighter than the reference's .16 because our background is a
-   near-black void rather than daylight footage, and .16 over black reads as milk. */
+/* Glass, not a grey rectangle. Three things do the work: a gradient across the face so it
+   has a light direction, a bright inset line along the top edge where light catches the
+   bevel, and a fine grain so a large translucent panel neither bands nor reads as flat
+   fill. `brightness` in the backdrop filter lifts the scene behind it, which is what makes
+   frosted glass look lit rather than smoked. */
 .glass {
-  background: rgba(244, 244, 240, .10);
-  backdrop-filter: blur(80px) saturate(120%);
-  -webkit-backdrop-filter: blur(80px) saturate(120%);
-  border: 1px solid rgba(244, 244, 240, .16);
-  box-shadow: 0 30px 60px rgba(1, 6, 12, .45);
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(158deg, rgba(244, 244, 240, .17) 0%, rgba(244, 244, 240, .055) 58%, rgba(244, 244, 240, .085) 100%);
+  backdrop-filter: blur(64px) saturate(150%) brightness(1.18);
+  -webkit-backdrop-filter: blur(64px) saturate(150%) brightness(1.18);
+  border: 1px solid rgba(244, 244, 240, .13);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .34),
+    inset 0 -1px 0 rgba(1, 6, 12, .30),
+    0 42px 90px -20px rgba(1, 6, 12, .62);
+}
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .5;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
 }
 
 /* ------------------------------------------------------- phase 1: hero */
@@ -232,27 +251,38 @@ img, svg { max-width: 100%; height: auto; }
   padding: clamp(30px, 3vw, 52px);
 }
 .hero__kicker {
-  display: block;
-  font-size: var(--zp-size-eyebrow);
-  font-weight: var(--zp-weight-eyebrow);
-  letter-spacing: var(--zp-track-eyebrow);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--zp-font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .2em;
   text-transform: uppercase;
-  color: var(--text-link);
-  margin-bottom: 18px;
+  color: rgba(244, 244, 240, .72);
+  margin-bottom: 20px;
+}
+.hero__kicker::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, rgba(244, 244, 240, .28), transparent);
 }
 .hero__title {
-  font-size: clamp(29px, 3.8vw, 58px);
-  line-height: 1.06;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  margin: 0 0 clamp(12px, 1.2vw, 20px);
+  font-family: var(--zp-font-editorial);
+  font-size: clamp(38px, 4.4vw, 68px);
+  line-height: 1.02;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  margin: 0 0 clamp(14px, 1.4vw, 22px);
   text-wrap: balance;
 }
+.hero__title em { color: rgba(244, 244, 240, .82); }
 .hero__sub {
   font-size: clamp(13px, 1vw, 15px);
-  line-height: 1.65;
-  color: rgba(244, 244, 240, .66);
-  max-width: 42ch;
+  line-height: 1.7;
+  color: rgba(244, 244, 240, .62);
+  max-width: 40ch;
 }
 
 /* The reference hangs its CTA off the card's right edge, half outside it. */
@@ -316,10 +346,11 @@ img, svg { max-width: 100%; height: auto; }
   color: rgba(244, 244, 240, .5);
 }
 .card__title {
-  font-size: 25px;
-  line-height: 1.14;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-family: var(--zp-font-editorial);
+  font-size: 30px;
+  line-height: 1.06;
+  font-weight: 400;
+  letter-spacing: -0.01em;
   margin: auto 0 10px;
 }
 .card__desc {
@@ -337,10 +368,12 @@ img, svg { max-width: 100%; height: auto; }
 }
 .card__chips li {
   padding: 5px 10px;
-  border: 1px solid rgba(244, 244, 240, .16);
+  border: 1px solid rgba(244, 244, 240, .18);
+  background: rgba(1, 6, 12, .22);
   font-size: 11px;
   font-weight: 500;
-  color: var(--zp-bright-white);
+  letter-spacing: .01em;
+  color: rgba(244, 244, 240, .9);
   font-variant-numeric: tabular-nums;
 }
 @media (max-width: 980px) {
@@ -372,23 +405,27 @@ img, svg { max-width: 100%; height: auto; }
 .say p {
   position: absolute;
   text-align: center;
-  font-family: var(--zp-font-display);
-  font-size: clamp(30px, 4.6vw, 62px);
-  font-weight: 700;
-  line-height: 1.16;
-  letter-spacing: -0.03em;
+  font-family: var(--zp-font-editorial);
+  font-size: clamp(34px, 5.4vw, 76px);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
   color: rgba(244, 244, 240, .97);
   text-shadow: 0 2px 44px rgba(1, 6, 12, .9);
   user-select: none;
 }
 /* The reference's pill: the one word the sentence turns on, set in the accent. */
+/* Gradient rather than flat fill — a solid swatch at this size reads as a UI chip; a
+   gradient reads as lit. */
 .pill {
   display: inline-block;
-  padding: 2px 18px;
-  margin: 0 6px;
-  background: var(--accent);
+  padding: .04em 20px .17em;
+  margin: 0 4px;
+  vertical-align: baseline;
+  background: linear-gradient(150deg, #5A8BE8, var(--zp-dazzling-blue));
   color: var(--zp-bright-white);
   border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 10px 30px -6px rgba(43, 87, 154, .6);
 }
 @media (min-width: 768px) { .pill { padding: 4px 24px; margin: 0 10px; } }
 
@@ -417,11 +454,12 @@ img, svg { max-width: 100%; height: auto; }
 }
 .contact__card img { width: 40px; margin-bottom: 18px; }
 .contact__card h2 {
-  font-size: clamp(24px, 2.4vw, 32px);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.18;
-  margin-bottom: 10px;
+  font-family: var(--zp-font-editorial);
+  font-size: clamp(30px, 3vw, 42px);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.06;
+  margin-bottom: 12px;
 }
 .contact__sub {
   font-size: 11px;
@@ -574,4 +612,115 @@ img, svg { max-width: 100%; height: auto; }
     transition-duration: .001ms !important;
   }
   .bg { transition: none; }
+}
+
+
+/* ================================================================ craft pass
+   What made this feel blunt was an absence of small things: every phase was one object in
+   the middle of an empty screen, text arrived as a solid block, and nothing acknowledged
+   being pointed at. None of the additions below are decorative — each one is a detail a
+   considered interface would already have. */
+
+/* --- Progress rail. Tells you where you are in the story and how much is left, which a
+   fixed-viewport site otherwise hides completely. */
+.rail {
+  position: absolute;
+  z-index: 47;
+  right: clamp(20px, 2.2vw, 34px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  gap: 20px;
+  pointer-events: none;
+}
+@media (max-width: 900px) { .rail { display: none; } }
+.rail__stop {
+  display: grid;
+  grid-template-columns: auto 1px;
+  align-items: center;
+  gap: 12px;
+  justify-items: end;
+}
+.rail__n {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: rgba(244, 244, 240, .3);
+  font-variant-numeric: tabular-nums;
+  transition: color .4s var(--zp-ease-standard);
+}
+.rail__bar {
+  position: relative;
+  width: 1px;
+  height: 34px;
+  background: rgba(244, 244, 240, .14);
+  overflow: hidden;
+}
+.rail__bar i {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--fill, 0%);
+  background: linear-gradient(var(--accent), #7FA8F0);
+  transition: height .18s linear;
+}
+.rail__stop[data-on] .rail__n { color: var(--zp-bright-white); }
+
+/* --- Meta line. A quiet readout in the corner: the kind of detail that signals the whole
+   thing was measured rather than assembled. */
+.meta {
+  position: absolute;
+  z-index: 47;
+  left: clamp(24px, 3vw, 48px);
+  bottom: clamp(18px, 2vw, 30px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(244, 244, 240, .34);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.meta i {
+  width: 22px; height: 1px;
+  background: rgba(244, 244, 240, .24);
+}
+@media (max-width: 900px) { .meta { display: none; } }
+
+/* --- Word-level reveal. The statements resolve word by word out of blur instead of
+   arriving as one solid block, which is the difference between text appearing and text
+   being spoken. */
+.say w {
+  display: inline-block;
+  will-change: opacity, transform, filter;
+}
+
+/* --- Cards that respond to being pointed at. Lifting on hover is what makes a surface
+   feel like an object rather than a rectangle. */
+.cards { pointer-events: none; }
+.card {
+  pointer-events: auto;
+  transition: transform .5s var(--zp-ease-out), border-color .4s ease, box-shadow .5s var(--zp-ease-out);
+}
+.card:hover {
+  transform: translateY(-8px);
+  border-color: rgba(244, 244, 240, .40);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .42), 0 56px 100px -24px rgba(1, 6, 12, .78);
+}
+.card__icon { transition: transform .5s var(--zp-ease-out), color .4s ease; }
+.card:hover .card__icon { transform: translateY(-3px) scale(1.06); color: #7FA8F0; }
+
+/* The index gets a hairline, so each card is numbered rather than just labelled. */
+.card__index {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.card__index::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, rgba(244, 244, 240, .22), transparent);
 }

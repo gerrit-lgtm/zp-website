@@ -6,7 +6,9 @@ import sharp from 'sharp';
 import { statSync } from 'node:fs';
 
 await MeshoptSimplifier.ready; await MeshoptEncoder.ready;
-const RATIO = Number(process.argv[2] ?? 0.3);
+const RATIO = Number(process.argv[2] ?? 0.3);          // >= 1 skips simplification
+const TEX = Number(process.argv[3] ?? 2048);           // texture edge, px
+const OUT = process.argv[4] ?? 'assets/zp-figure.glb';
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder });
 const doc = await io.read('build-src/armored_suit.glb');
 
@@ -38,8 +40,8 @@ for (const tex of doc.getRoot().listTextures()) await compressHighlights(tex);
 await doc.transform(
   dedup(), prune(),
   weld({ tolerance: 0.0001 }),
-  simplify({ simplifier: MeshoptSimplifier, ratio: RATIO, error: 0.002, lockBorder: false }),
-  textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [2048, 2048], quality: 88 }),
+  ...(RATIO >= 1 ? [] : [simplify({ simplifier: MeshoptSimplifier, ratio: RATIO, error: 0.002, lockBorder: false })]),
+  textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [TEX, TEX], quality: TEX > 2048 ? 94 : 88 }),
   quantize({ quantizePosition: 14, quantizeNormal: 10, quantizeTexcoord: 12 }),
 );
 doc.createExtension(EXTMeshoptCompression).setRequired(true)
@@ -48,5 +50,5 @@ doc.createExtension(EXTMeshoptCompression).setRequired(true)
 const root = doc.getRoot();
 let tris = 0;
 for (const m of root.listMeshes()) for (const p of m.listPrimitives()) tris += p.getIndices().getCount()/3;
-await io.write('assets/zp-figure.glb', doc);
-console.log(`ratio ${RATIO} -> ${Math.round(tris).toLocaleString()} tris, ${(statSync('assets/zp-figure.glb').size/1e6).toFixed(2)} MB`);
+await io.write(OUT, doc);
+console.log(`${OUT}: ratio ${RATIO}, tex ${TEX} -> ${Math.round(tris).toLocaleString()} tris, ${(statSync(OUT).size/1e6).toFixed(2)} MB`);

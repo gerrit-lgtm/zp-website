@@ -16,11 +16,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/site.css">
+<link rel="preload" as="image" href="assets/film/hd/f_0000.webp" type="image/webp">
 <!-- Only JS can ever clear the loader, so without JS it must never appear. -->
 <noscript><style>#loader { display: none; }</style></noscript>
-<script type="importmap">
-{ "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/jsm/" } }
-</script>
 </head>
 <body>
 
@@ -66,7 +64,7 @@
     <!-- Phase 1 -->
     <section class="hero glass ph" id="hero" aria-labelledby="hero-h">
       <span class="hero__kicker">The point where value begins</span>
-      <h1 class="hero__title" id="hero-h">Sovereign AI infrastructure. Real business value.</h1>
+      <h1 class="hero__title" id="hero-h">Sovereign AI <em>infrastructure.</em><br>Real business <em>value.</em></h1>
       <p class="hero__sub">Secure, sovereign and scalable AI — engineered onshore, governed end to end, and measured in outcomes rather than experiments.</p>
       <button class="hero__cta" id="cta" aria-label="Explore solutions">
         <svg viewBox="0 0 40 24" aria-hidden="true">
@@ -153,6 +151,10 @@
         </div>
       </div>
     </section>
+
+    <div class="rail" id="rail" aria-hidden="true"></div>
+
+    <p class="meta" aria-hidden="true"><span id="metaLabel">Dormant</span><i></i><span id="metaPct">00</span>%</p>
 
     <p class="cue ph" id="cue" aria-hidden="true"><i></i>Scroll</p>
 

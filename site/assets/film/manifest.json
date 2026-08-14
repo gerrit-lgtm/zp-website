@@ -1,0 +1,14 @@
+{
+  "count": 120,
+  "sizes": [
+    {
+      "tag": "hd",
+      "width": 2560
+    },
+    {
+      "tag": "sd",
+      "width": 1280
+    }
+  ],
+  "pattern": "f_%04d.webp"
+}
