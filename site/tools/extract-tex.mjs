@@ -1,0 +1,12 @@
+import { NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { writeFileSync } from 'node:fs';
+const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+const doc = await io.read('build-src/armored_suit.glb');
+const root = doc.getRoot();
+const mat = root.listMaterials()[0];
+console.log('material', mat.getName(), 'metallic',mat.getMetallicFactor(),'rough',mat.getRoughnessFactor(),'base',mat.getBaseColorFactor(),'emissive',mat.getEmissiveFactor());
+console.log('maps: base',!!mat.getBaseColorTexture(),'mr',!!mat.getMetallicRoughnessTexture(),'normal',!!mat.getNormalTexture(),'emissive',!!mat.getEmissiveTexture(),'occl',!!mat.getOcclusionTexture());
+const t = root.listTextures()[0];
+writeFileSync('tools/basecolor.jpg', Buffer.from(t.getImage()));
+console.log('wrote tools/basecolor.jpg', t.getSize());

@@ -1,0 +1,5 @@
+node_modules
+build-src/*.glb
+tools/final
+tools/verify
+tools/live

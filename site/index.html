@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ZeroPoint — Sovereign AI infrastructure. Real business value.</title>
+<meta name="description" content="Secure. Sovereign. Scalable. Managed AI video, private AI agents and advisory, delivered onshore by one accountable operator.">
+<meta name="theme-color" content="#01060C">
+<link rel="icon" href="assets/brand/zeropoint-icon-white.svg" type="image/svg+xml">
+<!-- Share card is a real frame off the rig (WP0). Swap to an absolute URL on deploy. -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="ZeroPoint — Sovereign AI infrastructure. Real business value.">
+<meta property="og:description" content="Managed AI video, private AI agents and advisory, delivered onshore by one accountable operator.">
+<meta property="og:image" content="assets/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/site.css">
+<!-- Only JS can ever clear the loader, so without JS it must never appear. -->
+<noscript><style>#loader { display: none; }</style></noscript>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/build/three.module.js", "three/addons/": "./vendor/three/jsm/" } }
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#credo">Skip to content</a>
+
+<div id="stage" aria-hidden="true"></div>
+
+<div id="loader">
+  <img class="mark" src="assets/brand/zeropoint-icon-white.svg" alt="">
+  <div class="bar"><i></i></div>
+  <p class="pct" role="status">Loading <span data-pct>0</span>%</p>
+</div>
+
+<header class="nav">
+  <a class="nav__home" href="#hero" aria-label="ZeroPoint — home">
+    <img src="assets/brand/zeropoint-wordmark-white.svg" alt="ZeroPoint" width="1660" height="150">
+  </a>
+  <nav aria-label="Primary">
+    <ul class="nav__links">
+      <li><a href="#studio">Solutions</a></li>
+      <li><a href="#core">Platform</a></li>
+      <li><a href="#team">Company</a></li>
+    </ul>
+  </nav>
+  <a class="nav__cta" href="#close">Contact us <span aria-hidden="true">→</span></a>
+</header>
+
+<nav class="rail" aria-label="Sections">
+  <ul id="rail-list"></ul>
+</nav>
+
+<!-- Scroll length only: the ride is 1,160vh, the eight camera stops are keyed off it. -->
+<div id="scroll" aria-hidden="true"></div>
+
+<main>
+
+  <!-- WP0 · FACE · 0–8% -->
+  <section class="beat beat--left" id="hero" data-beat="wp0" data-vh="100" aria-labelledby="hero-h">
+    <div>
+      <span class="eyebrow">The point where value begins</span>
+      <h1 class="h-display statement" id="hero-h">Sovereign AI infrastructure. Real business value.</h1>
+      <p class="lede" style="margin-top:22px">Secure, sovereign and scalable AI — engineered onshore, governed end to end, and measured in outcomes rather than experiments.</p>
+      <div class="actions">
+        <a class="btn btn--primary" href="#studio">Explore solutions <span aria-hidden="true">→</span></a>
+        <a class="btn btn--ghost" href="#close">Book a demo</a>
+      </div>
+    </div>
+    <p class="cue" aria-hidden="true"><i></i>Scroll</p>
+  </section>
+
+  <!-- T1 · DESCENT · 8–18% -->
+  <section class="beat beat--centre" id="credo" data-beat="wp1" data-vh="120" aria-labelledby="credo-h">
+    <div>
+      <h2 class="h1 statement statement--wide" id="credo-h">Technology is never the destination. Value is.</h2>
+      <ul class="chips" aria-label="Proof points">
+        <li>R20.02 / master</li>
+        <li>600 frames in 18.1 s</li>
+        <li>97 sign-ups, week one</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- WP2a · RIGHT HAND · 18–32% -->
+  <section class="beat beat--left" id="studio" data-beat="wp2a" data-vh="160" aria-labelledby="studio-h">
+    <div class="panel">
+      <p class="panel__index">01 — Solutions</p>
+      <h2 class="h2" id="studio-h">Zero Point Studio</h2>
+      <p class="lede">Managed AI video and content production. Brief in, broadcast-ready master out — produced on our own pipeline, at a price per asset you can plan around.</p>
+      <ul class="chips">
+        <li>R20.02 master</li>
+        <li>R3,500–25,000 / asset</li>
+      </ul>
+      <p class="actions"><a class="btn btn--link" href="#close">Learn more <span aria-hidden="true">→</span></a></p>
+    </div>
+  </section>
+
+  <!-- WP2b · RIGHT HAND, tighter · 32–44% -->
+  <section class="beat beat--left" id="enterprise" data-beat="wp2b" data-vh="160" aria-labelledby="ent-h">
+    <div class="panel">
+      <p class="panel__index">02 — Solutions</p>
+      <h2 class="h2" id="ent-h">Zero Point Enterprise</h2>
+      <p class="lede">Private AI agents and workflow builds that run inside your estate. Every build ships against acceptance gates, delivered by specialists who stay accountable for the outcome.</p>
+      <ul class="chips">
+        <li>Acceptance gates</li>
+        <li>200 specialists</li>
+      </ul>
+      <p class="actions"><a class="btn btn--link" href="#close">Learn more <span aria-hidden="true">→</span></a></p>
+    </div>
+  </section>
+
+  <!-- WP3 · CHEST · 44–58% — the brand beat -->
+  <section class="beat beat--centre" id="core" data-beat="wp3" data-vh="160" aria-labelledby="core-h">
+    <div class="core">
+      <span class="eyebrow">The sovereign core</span>
+      <h2 class="h1 statement statement--wide" id="core-h">One accountable operator.</h2>
+      <!-- Stats split either side, per storyboard F5: the centre column stays empty so
+           the chest — and the iris that lights up on this stop — is never covered. -->
+      <div class="core__split">
+        <ul class="stats stats--rail" role="list">
+          <li><dl><dt>Compute</dt><dd>3,000 onshore GPUs</dd></dl></li>
+          <li><dl><dt>Data</dt><dd>POPIA residency</dd></dl></li>
+          <li><dl><dt>Delivery</dt><dd>Governed workflows</dd></dl></li>
+        </ul>
+        <ul class="stats stats--rail" role="list">
+          <li><dl><dt>Security</dt><dd>Audited baseline</dd></dl></li>
+          <li><dl><dt>Operations</dt><dd>Onshore delivery</dd></dl></li>
+          <li><dl><dt>Commercials</dt><dd>Metered usage</dd></dl></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- WP4 · LEFT HAND · 58–72% -->
+  <section class="beat beat--right" id="advisory" data-beat="wp4" data-vh="170" aria-labelledby="adv-h">
+    <div class="panel">
+      <p class="panel__index">03 — Consulting</p>
+      <h2 class="h2" id="adv-h">Zero Point Advisory</h2>
+      <p class="lede">AI readiness, governance and workflow economics — the work that decides whether a build pays for itself. Extended into B-BBEE procurement and enterprise &amp; supplier development.</p>
+      <ul class="chips">
+        <li>Readiness &amp; governance</li>
+        <li>Workflow economics</li>
+        <li>B-BBEE procurement &amp; ESD</li>
+      </ul>
+      <p class="actions"><a class="btn btn--link" href="#close">Learn more <span aria-hidden="true">→</span></a></p>
+    </div>
+  </section>
+
+  <!-- WP5 · FEET · 72–86% -->
+  <section class="beat beat--centre" id="team" data-beat="wp5" data-vh="160" aria-labelledby="team-h">
+    <div>
+      <span class="eyebrow eyebrow--muted">Standing behind it</span>
+      <h2 class="h2" id="team-h">Who stands behind it</h2>
+      <dl class="roster">
+        <div class="roster__row">
+          <dt>Leadership</dt>
+          <dd>Gerrit Steenkamp &amp; Deon Fourie <span>— co-CEOs</span> · Rob Hersov · Louis McLaren</dd>
+        </div>
+        <div class="roster__row">
+          <dt>Partners</dt>
+          <dd>Agile Bridge · ontbytSAKE · GigaBrain · B4i</dd>
+        </div>
+        <div class="roster__row">
+          <dt>Foundry</dt>
+          <dd>Stage-gated co-building, for revenue share or equity</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- WP6 · PULL-BACK · 86–100% -->
+  <section class="beat beat--centre" id="close" data-beat="wp6" data-vh="130" aria-labelledby="close-h">
+    <div>
+      <h2 class="h-display statement statement--wide" id="close-h">The point where value begins.</h2>
+      <div class="actions">
+        <a class="btn btn--primary" href="mailto:hello@zeropoint.africa">Talk to an expert <span aria-hidden="true">→</span></a>
+      </div>
+      <footer class="foot">
+        <img src="assets/brand/zeropoint-wordmark-white.svg" alt="ZeroPoint" width="1660" height="150">
+        <a href="#studio">Solutions</a>
+        <a href="#core">Platform</a>
+        <a href="#team">Company</a>
+        <a href="mailto:hello@zeropoint.africa">hello@zeropoint.africa</a>
+        <span class="foot__end">zeropoint.africa</span>
+      </footer>
+    </div>
+  </section>
+
+</main>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

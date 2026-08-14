@@ -1,0 +1,556 @@
+/* ZeroPoint — scroll-over-3D site.
+   Overlay language follows wireframe option 1d (anchored glass panel, one per stop,
+   always opposite the 3D focus) for the dense product stops, and 1e (type straight on
+   the render over a scrim) for the three pure-statement stops: hero, credo, close. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--surface-page);
+  color: var(--text-body);
+  font-family: var(--zp-font-body);
+  font-size: var(--zp-size-body);
+  line-height: var(--zp-line-body);
+  overflow-x: hidden;
+}
+
+h1, h2, h3 { font-family: var(--zp-font-display); color: var(--text-heading); margin: 0; }
+p { margin: 0; }
+/* Width/height attributes stay on the markup to reserve space (no layout shift);
+   height:auto keeps the box on the mark's own ratio. */
+img, svg { max-width: 100%; height: auto; }
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1000;
+  padding: 12px 18px;
+  background: var(--zp-bright-white);
+  color: var(--zp-peacoat);
+  font-weight: 600;
+  border-radius: 8px;
+  transform: translateY(-160%);
+  transition: transform var(--zp-duration-base) var(--zp-ease-standard);
+}
+.skip-link:focus-visible { transform: none; }
+
+.u-sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- 3D stage */
+
+#stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(120% 78% at 50% 8%, rgba(29, 53, 87, .30) 0%, transparent 62%),
+    radial-gradient(90% 60% at 50% 104%, rgba(43, 87, 154, .22) 0%, transparent 70%),
+    var(--zp-void);
+}
+#stage canvas { display: block; width: 100%; height: 100%; }
+
+/* Vignette + top scrim: holds contrast under the nav and around panel edges
+   so body copy never has to fight a bright patch of the render. */
+#stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(1, 6, 12, .82) 0%, rgba(1, 6, 12, 0) 22%),
+    radial-gradient(140% 100% at 50% 50%, transparent 42%, rgba(1, 6, 12, .68) 100%);
+}
+
+#loader {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-content: center;
+  gap: 22px;
+  justify-items: center;
+  background: var(--zp-void);
+  transition: opacity var(--zp-duration-reveal) var(--zp-ease-out);
+}
+#loader[hidden] { display: none; }
+#loader.is-done { opacity: 0; pointer-events: none; }
+#loader .mark { width: 68px; opacity: .9; }
+#loader .bar {
+  width: min(240px, 60vw);
+  height: 2px;
+  background: rgba(244, 244, 240, .14);
+  overflow: hidden;
+}
+#loader .bar i {
+  display: block;
+  height: 100%;
+  width: var(--p, 0%);
+  background: var(--accent);
+  transition: width var(--zp-duration-base) linear;
+}
+#loader .pct {
+  font-size: var(--zp-size-eyebrow);
+  letter-spacing: var(--zp-track-eyebrow);
+  font-weight: var(--zp-weight-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------- chrome */
+
+.nav {
+  position: fixed;
+  z-index: 50;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 20px clamp(20px, 4vw, 56px);
+  padding-top: max(20px, env(safe-area-inset-top));
+}
+.nav__home { display: flex; align-items: center; min-height: 44px; }
+.nav__home img { width: clamp(132px, 13vw, 168px); }
+.nav__links {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  list-style: none;
+  padding: 0;
+}
+.nav__links a, .nav__cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: var(--zp-size-small);
+  font-weight: 500;
+  color: var(--text-heading);
+  text-decoration: none;
+  transition: var(--zp-duration-fast) var(--zp-ease-standard);
+  transition-property: background-color, color, border-color;
+}
+.nav__links a:hover { background: rgba(244, 244, 240, .08); }
+.nav__links a[aria-current="true"] { color: var(--zp-bright-white); background: rgba(43, 87, 154, .28); }
+.nav__cta {
+  border: 1px solid var(--border-strong);
+  background: rgba(7, 16, 25, .55);
+  backdrop-filter: blur(14px);
+  font-weight: 600;
+}
+.nav__cta:hover { background: var(--action-primary-bg); border-color: transparent; }
+
+/* Stop index — where you are on the ride, and a keyboard route to any stop. */
+.rail {
+  position: fixed;
+  z-index: 50;
+  right: clamp(14px, 2vw, 28px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+}
+.rail ul {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+  margin: 0; padding: 0;
+}
+.rail button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;   /* the rail shows from 1024px, which includes touch tablets */
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--zp-duration-base) var(--zp-ease-standard),
+              color var(--zp-duration-base) var(--zp-ease-standard);
+}
+.rail button::after {
+  content: "";
+  width: 18px;
+  height: 1px;
+  background: currentColor;
+  transition: width var(--zp-duration-base) var(--zp-ease-standard);
+}
+.rail li:hover button, .rail button:focus-visible { opacity: 1; }
+.rail [aria-current="true"] { color: var(--zp-bright-white); opacity: 1; }
+.rail [aria-current="true"]::after { width: 34px; background: var(--accent); }
+
+/* ------------------------------------------------------- scroll + overlay */
+
+/* Without the rig (no JS / no WebGL) main is an ordinary readable dark page.
+   .rig-on lifts it into the fixed overlay the camera composes against. */
+#scroll { display: none; }
+
+.rig-on #scroll { display: block; }
+.rig-on main {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  padding: 0;
+  pointer-events: none;
+}
+.rig-on .beat {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  padding: clamp(84px, 11vh, 132px) clamp(20px, 5vw, 76px);
+  padding-bottom: max(clamp(84px, 11vh, 132px), env(safe-area-inset-bottom));
+  opacity: 0;
+  transition: opacity var(--zp-duration-slow) var(--zp-ease-standard);
+  will-change: opacity;
+}
+/* Drift is scroll-driven, so it must not be transitioned — the value changes every
+   frame and a transition would only fight it. */
+.rig-on .beat > * {
+  transform: translate3d(0, calc(var(--drift, 0) * -34px), 0);
+}
+.rig-on .beat[data-active] { opacity: 1; }
+.rig-on .beat[data-active] :is(a, button) { pointer-events: auto; }
+
+/* Stacked above the fixed stage: without this the flat fallback page renders its copy
+   underneath the stage backdrop, which is indistinguishable from a blank screen. */
+main {
+  position: relative;
+  z-index: 1;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 clamp(20px, 5vw, 76px);
+}
+.beat { padding: clamp(72px, 12vh, 140px) 0; }
+
+/* The scroll cue only means anything while the ride is driving the page. */
+.cue { display: none; }
+.rig-on .cue { display: grid; }
+
+/* Composition: which side of the frame the copy sits on, opposite the 3D focus. */
+.beat--left { justify-items: start; }
+.beat--right { justify-items: end; }
+.beat--centre { justify-items: center; text-align: center; }
+
+/* --------------------------------------------------------------- type kit */
+
+.eyebrow {
+  display: block;
+  font-size: var(--zp-size-eyebrow);
+  font-weight: var(--zp-weight-eyebrow);
+  letter-spacing: var(--zp-track-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-link);
+  margin-bottom: 18px;
+  text-shadow: 0 1px 18px rgba(1, 6, 12, .95);
+}
+.eyebrow--muted { color: var(--text-muted); }
+
+.h-display {
+  font-size: clamp(38px, 6.4vw, var(--zp-size-display));
+  line-height: var(--zp-line-display);
+  font-weight: var(--zp-weight-display);
+  letter-spacing: var(--zp-track-display);
+  text-wrap: balance;
+}
+.h1 {
+  font-size: clamp(32px, 5vw, var(--zp-size-h1));
+  line-height: var(--zp-line-h1);
+  font-weight: var(--zp-weight-h1);
+  letter-spacing: var(--zp-track-h1);
+  text-wrap: balance;
+}
+.h2 {
+  font-size: clamp(26px, 3.4vw, var(--zp-size-h2));
+  line-height: var(--zp-line-h2);
+  font-weight: var(--zp-weight-h2);
+  letter-spacing: var(--zp-track-h2);
+  text-wrap: balance;
+}
+.h3 {
+  font-size: clamp(20px, 2.2vw, var(--zp-size-h3));
+  line-height: var(--zp-line-h3);
+  font-weight: var(--zp-weight-h3);
+}
+.lede {
+  font-size: clamp(16px, 1.5vw, var(--zp-size-body-lg));
+  line-height: var(--zp-line-body-lg);
+  color: var(--text-body);
+  max-width: 46ch;
+}
+.beat--centre .lede { margin-inline: auto; }
+
+/* Option 1e's scrim. Needed at every width now that the figure is lit as a hero object:
+   the chest plate is bright, and letterspaced blue caps on bright metal is not a contrast
+   ratio worth defending. Weighted to the top of the block, where the eyebrow and heading
+   sit — any cards below carry their own surface. */
+.rig-on .beat--centre > div {
+  background: radial-gradient(112% 66% at 50% 4%, rgba(1, 6, 12, .72) 0%, rgba(1, 6, 12, 0) 58%);
+}
+
+/* Statement stops carry no panel, so the type gets its own scrim (1e). */
+.statement {
+  max-width: 20ch;
+  text-shadow: 0 2px 40px rgba(1, 6, 12, .92), 0 1px 4px rgba(1, 6, 12, .8);
+}
+.statement--wide { max-width: 26ch; }
+
+/* -------------------------------------------------------------- glass panel */
+
+.panel {
+  max-width: min(460px, 38vw);
+  padding: clamp(24px, 2.4vw, 34px);
+  border: 1px solid rgba(244, 244, 240, .10);
+  border-radius: 16px;
+  background: rgba(7, 16, 25, .72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 24px 70px rgba(1, 6, 12, .55);
+}
+.panel__index {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: var(--zp-size-caption);
+  letter-spacing: .1em;
+  color: var(--accent);
+}
+.panel .h2, .panel .h3 { margin-top: 12px; }
+.panel .lede { margin-top: 14px; }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.chips li {
+  padding: 7px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-chip);
+  font-size: var(--zp-size-caption);
+  font-weight: 500;
+  color: var(--zp-bright-white);
+  font-variant-numeric: tabular-nums;
+}
+.beat--centre .chips { justify-content: center; }
+
+/* ------------------------------------------------------------------ actions */
+
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.beat--centre .actions { justify-content: center; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-family: var(--zp-font-body);
+  font-size: var(--zp-size-small);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--zp-duration-fast) var(--zp-ease-standard);
+  transition-property: background-color, border-color, color, transform;
+}
+.btn:active { transform: translateY(1px); }
+.btn--primary { background: var(--action-primary-bg); color: var(--action-primary-fg); }
+.btn--primary:hover { background: var(--action-primary-bg-hover); }
+.btn--ghost { border-color: var(--border-strong); color: var(--zp-bright-white); }
+.btn--ghost:hover { background: rgba(244, 244, 240, .08); }
+.btn--link {
+  min-height: 44px;
+  padding: 0;
+  color: var(--text-link);
+  background: none;
+}
+.btn--link:hover { color: var(--zp-bright-white); }
+
+/* ------------------------------------------------------------------ blocks */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin: 30px 0 0;
+  padding: 0;
+  list-style: none;
+  width: min(940px, 100%);
+}
+.stats > li {
+  padding: 20px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: rgba(7, 16, 25, .80);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  text-align: left;
+}
+.stats dt {
+  font-size: var(--zp-size-caption);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.stats dd {
+  margin: 8px 0 0;
+  font-family: var(--zp-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--zp-bright-white);
+  font-variant-numeric: tabular-nums;
+}
+
+/* WP3 — copy above, stats down either flank, centre kept clear for the chest. */
+.core { display: grid; justify-items: center; width: 100%; }
+.core__split {
+  display: grid;
+  grid-template-columns: 1fr minmax(140px, 24vw) 1fr;
+  width: min(1120px, 100%);
+  margin-top: 30px;
+}
+.core__split > .stats { margin: 0; width: auto; }
+.core__split > .stats:last-child { grid-column: 3; }
+.stats--rail { grid-template-columns: 1fr; }
+
+.roster { display: grid; gap: 18px; margin-top: 26px; width: min(880px, 100%); }
+.roster__row {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 18px;
+  align-items: baseline;
+  padding: 16px 20px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: rgba(7, 16, 25, .80);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  text-align: left;
+}
+.roster__row dt {
+  font-size: var(--zp-size-caption);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.roster__row dd { margin: 0; color: var(--zp-bright-white); font-size: var(--zp-size-small); }
+.roster__row dd span { color: var(--text-muted); }
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 26px;
+  width: min(1040px, 100%);
+  margin-top: 44px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--zp-size-caption);
+  color: var(--text-muted);
+}
+.foot img { width: 122px; opacity: .8; }
+.foot a { color: var(--text-muted); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+.foot a:hover { color: var(--zp-bright-white); }
+.foot__end { margin-left: auto; }
+
+.cue {
+  position: absolute;
+  left: 50%;
+  bottom: max(26px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: var(--zp-track-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.cue i {
+  width: 1px;
+  height: 30px;
+  background: linear-gradient(var(--accent), transparent);
+  animation: cue 2.4s var(--zp-ease-standard) infinite;
+}
+@keyframes cue {
+  0% { transform: scaleY(.2); transform-origin: top; opacity: 0; }
+  40% { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(1); transform-origin: bottom; opacity: 0; }
+}
+
+/* ------------------------------------------------------------- responsive */
+
+@media (min-width: 1024px) {
+  .rail { display: flex; }
+}
+
+@media (max-width: 900px) {
+  .nav__links { display: none; }
+  .rig-on .beat {
+    align-content: end;
+    justify-items: stretch !important;
+    text-align: left !important;
+  }
+  .rig-on .beat--centre { text-align: center !important; }
+  .panel { max-width: none; }
+  .statement { max-width: none; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  /* No centre column to protect on a phone, and six stacked cards overflow a fixed
+     beat — so both rails collapse into one compact 2-up grid. display:contents lifts
+     the items into it; role="list" on the markup keeps the semantics. */
+  .core__split { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .core__split > .stats { display: contents; }
+  .rig-on .beat--centre > div {
+    background: radial-gradient(124% 76% at 50% 6%, rgba(1, 6, 12, .88) 0%, rgba(1, 6, 12, 0) 64%);
+  }
+  .stats > li { padding: 13px 15px; }
+  .stats dt { font-size: 11px; }
+  .stats dd { margin-top: 4px; font-size: 17px; }
+  .roster__row { grid-template-columns: 1fr; gap: 6px; }
+  .foot__end { margin-left: 0; }
+}
+
+@media (max-width: 560px) {
+  .stats { grid-template-columns: 1fr; }
+  .beat--centre .lede { max-width: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .rig-on .beat > * { transform: none; }
+}

@@ -1,0 +1,83 @@
+/* ZeroPoint design tokens — values verbatim from the design-system project
+   (zeropoint-design-system-935c1799): tokens/fonts.css, colors.css, typography.css,
+   motion.css, semantic.css. Only the tokens this site actually consumes are carried
+   over; nothing is re-derived or re-sampled here. */
+
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  --zp-font-display: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+  --zp-font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+
+  /* Named brand palette (CI p.11) */
+  --zp-peacoat: #192231;
+  --zp-surf-the-web: #1D3557;
+  --zp-dazzling-blue: #2B579A;
+  --zp-stormy-weather: #5A6F8A;
+  --zp-cool-gray: #75787B;
+  --zp-bright-white: #F4F4F0;
+
+  /* Dark ramp, sampled from the CI website + dashboard mockups (p.23/24) */
+  --zp-void: #01060C;
+  --zp-abyss: #071019;
+  --zp-deep: #0C141F;
+  --zp-slate: #151C24;
+
+  /* Action blues observed in the dark product UI */
+  --zp-blue-deep: #0B2972;
+  --zp-blue-active: #14235F;
+  --zp-blue-bright: #3B6FD4;
+
+  /* Type scale */
+  --zp-size-display: 72px;
+  --zp-line-display: 1.12;
+  --zp-weight-display: 800;
+  --zp-track-display: -0.02em;
+  --zp-size-h1: 56px;
+  --zp-line-h1: 1.15;
+  --zp-weight-h1: 700;
+  --zp-track-h1: -0.02em;
+  --zp-size-h2: 40px;
+  --zp-line-h2: 1.20;
+  --zp-weight-h2: 600;
+  --zp-track-h2: -0.01em;
+  --zp-size-h3: 28px;
+  --zp-line-h3: 1.30;
+  --zp-weight-h3: 600;
+  --zp-size-body-lg: 18px;
+  --zp-line-body-lg: 1.55;
+  --zp-size-body: 16px;
+  --zp-line-body: 1.50;
+  --zp-size-small: 14px;
+  --zp-size-caption: 12px;
+  --zp-size-eyebrow: 12px;
+  --zp-track-eyebrow: 0.18em;
+  --zp-weight-eyebrow: 600;
+  --zp-track-wordmark: 0.32em;
+
+  /* Motion — short, ease-led, never bouncy: precision, not personality */
+  --zp-duration-fast: 150ms;
+  --zp-duration-base: 220ms;
+  --zp-duration-slow: 400ms;
+  --zp-duration-reveal: 700ms;
+  --zp-ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --zp-ease-out: cubic-bezier(.16, 1, .3, 1);
+
+  /* Dark-surface semantic aliases (.zp-dark in the DS — the default for this site) */
+  --surface-page: var(--zp-void);
+  --surface-card: var(--zp-deep);
+  --surface-raised: var(--zp-slate);
+  --surface-chip: rgba(43, 87, 154, .16);
+  --text-display: var(--zp-bright-white);
+  --text-heading: var(--zp-bright-white);
+  --text-body: #A8B4C4;
+  --text-muted: #75818F;
+  --text-link: #7FA8F0;
+  --border-subtle: rgba(244, 244, 240, .10);
+  --border-strong: rgba(244, 244, 240, .22);
+  --action-primary-bg: var(--zp-blue-deep);
+  --action-primary-bg-hover: #0E3390;
+  --action-primary-fg: var(--zp-bright-white);
+  --accent: var(--zp-blue-bright);
+  --focus-ring: var(--zp-blue-bright);
+}

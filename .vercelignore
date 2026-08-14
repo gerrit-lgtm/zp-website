@@ -1,10 +1,19 @@
+# The deploy is site/ only (see outputDirectory in vercel.json). Everything below is
+# either source material for the asset pipeline or build tooling, and must not ship.
 .git
 .DS_Store
+.env*
 node_modules
-CI
-tools
-*.zip
 
-# the scroll cinematic is retired; its 214MB of frames and clips would
-# otherwise be copied into dist on every build. Remove this line to restore it.
-public/media
+# Asset pipeline inputs and tooling — the 56MB source model, the CI originals, the
+# Blender scene and the headless verification scripts.
+site/node_modules
+site/build-src
+site/tools
+site/package.json
+site/package-lock.json
+CI
+Avatar
+test
+
+*.zip
