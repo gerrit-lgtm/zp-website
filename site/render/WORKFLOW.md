@@ -31,11 +31,14 @@ exists. See *What to demand from a 3D asset* below.
 **4. Render the sequence.**
 
 ```sh
-# one frame, to check the look (fast)
-blender -b -P render/scene.py -- --at 0.5 --out render/look --width 1920 --samples 64
+# 0. the texture inputs (derived, gitignored, so this runs first from a clean checkout)
+node render/textures.mjs
 
-# the whole move
-blender -b -P render/scene.py -- --frames 120 --out render/seq --width 2560 --samples 80
+# 1. one frame, to check the look — about ten seconds
+blender -b -P render/scene.py -- --at 0.52 --out render/look --width 1920 --samples 64
+
+# 2. the whole move: 360 frames is 15 seconds at 24fps, about an hour on an M5 Max
+blender -b -P render/scene.py -- --frames 360 --out render/seq --width 2560 --samples 128
 ```
 
 **5. Process for the web, then it just works.**
@@ -118,3 +121,44 @@ Two things had to be got right, both visible in one test frame:
   rather than a hall behind him. They now sit about a tenth of that.
 - **Aperture.** f/4 was not enough separation. f/1.8 lets the lens do the work instead of
   dimming things until they disappear.
+
+
+---
+
+## The choreography
+
+One continuous 15-second move, no cuts. It lives in the `PATH` list at the top of
+`render/scene.py` — eleven keys, smootherstep-interpolated — and the website's phase timings
+in `js/main.js` are set to land on the same beats.
+
+| Scroll | Shot | What the site shows |
+|---|---|---|
+| 0.00–0.10 | face, tight — **eyes dead** | hero card |
+| 0.10–0.22 | activation: visor, tracery and mark ignite | hero card leaves |
+| 0.22–0.32 | down to the chest | the credo |
+| 0.32–0.52 | out to his right hand | the platform line |
+| 0.52–0.62 | back to the chest | — |
+| 0.62–0.79 | out to his **left hand** | the three services |
+| 0.79–0.88 | back to the chest | — |
+| 0.88–1.00 | **he turns on the spot**, camera held | who stands behind it, then contact |
+
+Only he and his mark turn — the camera and lights hold, which is what makes the closing move
+read as a showroom turntable rather than a camera orbit.
+
+If you change the move, the site's phase timings in `js/main.js` need to move with it: the
+`T` array for the statements, `cardsOn`/`IN`/`OUT` for the cards, `STOPS` for the rail, and
+`MARKS` for the nav.
+
+## The material
+
+Made to read as lacquered armour rather than raw casting:
+
+- **Clear coat at 0.85**, roughness 0.055 — a second sharper specular layer over the base.
+  This is the single thing that separates an Iron Man suit from a metal casting.
+- **Roughness scaled to 0.42** of the ORM map's value: glossy everywhere, mirror nowhere.
+- **Procedural micro-surface** — fine grain plus a slow undulation, driving a bump. The asset
+  has no normal map, and one derived from its low-bitrate JPEG only reproduced the
+  compression blocks, so this is generated instead.
+- **The white trim is remapped to dark steel.** The albedo paints big near-white patches; on
+  a dark lacquered suit they read as stickers, and the white chest disc fought the mark that
+  is meant to sit in it. Now the mark sits in a dark machined housing.

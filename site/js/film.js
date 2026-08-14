@@ -5,8 +5,8 @@
  * mechanism the Bloom reference uses for its video, and it is why the picture can look as
  * good as Blender can make it — the browser is not rendering anything, only showing images.
  *
- * The one real constraint is memory, not bandwidth. 120 frames at 2560x1440 would be about
- * 1.7 GB if all were held decoded, so frames are kept as compressed <img> data (a few MB in
+ * The one real constraint is memory, not bandwidth. 360 frames at 2560x1440 would be about
+ * 5 GB if all were held decoded, so frames are kept as compressed <img> data (tens of MB in
  * total) and only a small window around the playhead is asked to decode.
  */
 
@@ -49,7 +49,7 @@ export class Film {
     });
 
     // Fetch the opening frame first so something can be shown immediately, then the rest in
-    // small batches — a single burst of 120 requests just queues behind itself.
+    // small batches — a single burst of 360 requests just queues behind itself.
     await load(0);
     this.draw(0);
     const rest = [...Array(this.count - 1)].map((_, k) => k + 1);
@@ -95,7 +95,7 @@ export class Film {
     // Warm the frames just ahead of the playhead so a fast scroll does not hit an
     // undecoded image and stutter.
     if (!this.reduced) {
-      for (let k = i + 1; k <= Math.min(this.count - 1, i + 4); k++) {
+      for (let k = i + 1; k <= Math.min(this.count - 1, i + 8); k++) {
         if (this.decoded.has(k)) continue;
         this.decoded.add(k);
         this.frames[k]?.decode?.().catch(() => {});

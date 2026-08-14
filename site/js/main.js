@@ -52,9 +52,9 @@ const words = says.map(n => [...n.querySelectorAll('w')]);
 
 /* The progress rail: four numbered stops that fill as each phase passes. */
 const STOPS = [
-  { n: '01', label: 'Sovereign AI', from: 0.00, to: 0.20 },
-  { n: '02', label: 'Solutions', from: 0.12, to: 0.58 },
-  { n: '03', label: 'What we stand for', from: 0.42, to: 0.95 },
+  { n: '01', label: 'Sovereign AI', from: 0.00, to: 0.19 },
+  { n: '02', label: 'What we stand for', from: 0.20, to: 0.62 },
+  { n: '03', label: 'Solutions', from: 0.63, to: 0.89 },
   { n: '04', label: 'Talk to us', from: 0.90, to: 1.00 },
 ];
 const rail = el('rail');
@@ -83,7 +83,7 @@ function present(node, on) {
 }
 
 /* Where each nav target sits on the ride, so an anchor lands on the phase holding it. */
-const MARKS = { top: 0, solutions: 0.26, platform: 0.70, company: 0.86, contact: 0.99 };
+const MARKS = { top: 0, solutions: 0.755, platform: 0.52, company: 0.905, contact: 0.99 };
 
 const span = () => Math.max(1, root.scrollHeight - innerHeight);
 const goTo = frac => scrollTo({ top: span() * frac, behavior: reduced ? 'auto' : 'smooth' });
@@ -109,15 +109,15 @@ function paint() {
   metaPct.textContent = String(Math.round(p * 100)).padStart(2, '0');
 
   /* --- Phase 1: hero card, nav and brand peel away, staggered like the reference. */
-  let f = ramp(p, 0, 0.15);
+  let f = ramp(p, 0.02, 0.15);
   dissolve(phases.hero, 1 - f, f * -35, f * 35, f * 16);
   present(phases.hero, f < 0.995);
 
-  f = ramp(p, 0.03, 0.18);
+  f = ramp(p, 0.05, 0.17);
   dissolve(phases.nav, 1 - f, 0, f * -35, f * 14);
   present(phases.nav, f < 0.995);
 
-  f = ramp(p, 0.06, 0.21);
+  f = ramp(p, 0.07, 0.19);
   dissolve(phases.brand, 1 - f, f * -25, f * -35, f * 12);
   present(phases.brand, f < 0.995);
 
@@ -125,11 +125,11 @@ function paint() {
   dissolve(cue, 1 - f, 0, f * 20, f * 8);
 
   /* --- Phase 2: three cards in, then out, each on its own clock. */
-  const cardsOn = p > 0.12 && p < 0.58;
+  const cardsOn = p > 0.63 && p < 0.89;
   present(phases.cards, cardsOn);
   if (cardsOn) {
-    const IN = [[0.15, 0.30], [0.18, 0.31], [0.21, 0.32]];
-    const OUT = [[0.36, 0.48], [0.36, 0.51], [0.36, 0.54]];
+    const IN = [[0.665, 0.715], [0.685, 0.735], [0.705, 0.755]];
+    const OUT = [[0.845, 0.875], [0.845, 0.882], [0.845, 0.888]];
     const OFF = [[-35, 35], [0, 35], [35, 35]];
     cards.forEach((node, i) => {
       const v = Math.min(ramp(p, IN[i][0], IN[i][1]), 1 - ramp(p, OUT[i][0], OUT[i][1]));
@@ -139,15 +139,15 @@ function paint() {
   }
 
   /* --- Phase 3: statements, one at a time, rising out of blur and leaving upward. */
-  const sayOn = p > 0.42 && p < 0.95;
+  // in-start, in-end, hold-end, out-end — one entry per statement, on the render's beats
+  const T = [
+    [0.225, 0.265, 0.350, 0.385],   // the chest, mark lit
+    [0.450, 0.485, 0.565, 0.600],   // his right hand
+    [0.875, 0.900, 0.925, 0.945],   // over the turn
+  ];
+  const sayOn = T.some(([a0, , , d0]) => p > a0 - 0.005 && p < d0 + 0.005);
   present(phases.say, sayOn);
   if (sayOn) {
-    // in-start, in-end, hold-end, out-end
-    const T = [
-      [0.44, 0.48, 0.58, 0.62],
-      [0.62, 0.66, 0.76, 0.80],
-      [0.80, 0.84, 0.90, 0.94],
-    ];
     says.forEach((node, i) => {
       const [a, b, c, d] = T[i];
       const exit = ramp(p, c, d);
@@ -174,10 +174,10 @@ function paint() {
   }
 
   /* --- Phase 4: the contact card, holding to the end. */
-  const contactOn = p > 0.90;
+  const contactOn = p > 0.93;
   present(phases.contact, contactOn);
   if (contactOn) {
-    const enter = ramp(p, 0.92, 0.965);
+    const enter = ramp(p, 0.945, 0.98);
     dissolve(contactCard, enter, 0, (1 - enter) * 120, (1 - enter) * 20);
   }
 

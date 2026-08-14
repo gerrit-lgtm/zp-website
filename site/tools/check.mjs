@@ -25,7 +25,7 @@ const wait = (p, ms) => p.evaluate(m => new Promise(r => setTimeout(r, m)), ms);
   const p = await boot(390, 844, { mobile: true });
   await wait(p, 2400);
   const rows = [];
-  for (const [f, name] of [[0, 'hero'], [0.30, 'cards'], [0.70, 'say'], [0.98, 'contact']]) {
+  for (const [f, name] of [[0, 'hero'], [0.30, 'credo'], [0.52, 'platform'], [0.76, 'cards'], [0.91, 'turn'], [0.98, 'contact']]) {
     await at(p, f); await wait(p, 1400);
     rows.push(await p.evaluate(n => ({
       phase: n,
