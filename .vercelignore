@@ -10,6 +10,11 @@ node_modules
 site/node_modules
 site/build-src
 site/tools
+
+# The render pipeline: Blender scene, intermediate PNGs, the 20 MB HDRI. None of it is served
+# — assets/film is the output that ships — and together it is ~470 MB, which is what was
+# making deploys hang rather than fail.
+site/render
 site/package.json
 site/package-lock.json
 CI
