@@ -19,6 +19,10 @@ import path from 'node:path';
 
 const SRC = process.argv[2] ?? 'render/seq';
 const OUT = 'assets/film';
+/* Frames are cached hard, and their filenames never change between renders — so without a
+ * build stamp in the path, a returning visitor keeps seeing the previous film for as long as
+ * the cache lasts. Content that changes has to change identity. */
+const BUILD = process.argv[3] ?? new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
 const SIZES = [{ w: 2560, q: 76, tag: 'hd' }, { w: 1280, q: 72, tag: 'sd' }];
 
 // Bloom: isolate what is genuinely bright, blur it wide, screen it back over the frame.
@@ -51,13 +55,13 @@ async function bloom(buf) {
 
 const files = (await readdir(SRC)).filter(f => f.endsWith('.png')).sort();
 if (!files.length) { console.error(`no frames in ${SRC}`); process.exit(1); }
-for (const s of SIZES) await mkdir(path.join(OUT, s.tag), { recursive: true });
+for (const s of SIZES) await mkdir(path.join(OUT, BUILD, s.tag), { recursive: true });
 
 const totals = Object.fromEntries(SIZES.map(s => [s.tag, 0]));
 for (const [i, f] of files.entries()) {
   const bloomed = await bloom(await sharp(path.join(SRC, f)).toBuffer());
   for (const s of SIZES) {
-    const dest = path.join(OUT, s.tag, `f_${String(i).padStart(4, '0')}.webp`);
+    const dest = path.join(OUT, BUILD, s.tag, `f_${String(i).padStart(4, '0')}.webp`);
     await sharp(bloomed).resize(s.w).webp({ quality: s.q, effort: 5 }).toFile(dest);
     totals[s.tag] += statSync(dest).size;
   }
@@ -67,12 +71,13 @@ for (const [i, f] of files.entries()) {
 }
 
 await writeFile(path.join(OUT, 'manifest.json'), JSON.stringify({
+  build: BUILD,
   count: files.length,
   sizes: SIZES.map(s => ({ tag: s.tag, width: s.w })),
   pattern: 'f_%04d.webp',
 }, null, 2));
 
-console.log('');
+console.log(`\n  build ${BUILD}`);
 for (const s of SIZES) {
   console.log(`  ${s.tag} ${String(s.w).padStart(5)}px  ${(totals[s.tag] / 1e6).toFixed(1)} MB total, ` +
               `${Math.round(totals[s.tag] / files.length / 1024)} KB/frame`);

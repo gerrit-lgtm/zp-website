@@ -27,7 +27,7 @@ export class Film {
 
   /** Load the manifest, pick a size for this screen, then fetch every frame. */
   async load(onProgress) {
-    const manifest = await (await fetch('assets/film/manifest.json')).json();
+    const manifest = await (await fetch('assets/film/manifest.json', { cache: 'no-cache' })).json();
     this.count = manifest.count;
 
     // The narrow screen is also the metered connection and the slower decoder.
@@ -35,7 +35,8 @@ export class Film {
       && (navigator.deviceMemory ?? 8) > 4
       && navigator.connection?.saveData !== true;
     const size = manifest.sizes.find(s => s.tag === (wide ? 'hd' : 'sd')) ?? manifest.sizes[0];
-    this.dir = `assets/film/${size.tag}`;
+    // The build stamp is what lets the frames be cached hard without ever going stale.
+    this.dir = `assets/film/${manifest.build}/${size.tag}`;
 
     this.ready = new Array(this.count).fill(false);
     let done = 0;
