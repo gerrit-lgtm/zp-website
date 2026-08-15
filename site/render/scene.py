@@ -44,7 +44,8 @@ ROOT = os.path.dirname(HERE)
 FIG = os.path.normpath(os.path.join(ROOT, "..", "test", "armored_suit.glb"))
 LOGO = os.path.normpath(os.path.join(ROOT, "..", "test", "zp_logo_3d.glb"))
 TEX = {k: os.path.join(HERE, v) for k, v in
-       {"base": "basecolor.png", "glow": "glow.png", "orm": "orm.png"}.items()}
+       {"base": "basecolor-flat.png", "glow": "glow.png",
+        "orm": "orm.png", "normal": "normal.png"}.items()}
 
 GROUND_Y = -0.9245
 CHEST_DISC = (0.1706, 0.4616, 0.0)     # measured: tools/disc.mjs
@@ -123,7 +124,7 @@ scene.render.image_settings.color_mode = "RGB"
 scene.render.image_settings.compression = 15
 scene.view_settings.view_transform = "AgX"
 scene.view_settings.look = "AgX - Punchy"
-scene.view_settings.exposure = -0.55
+scene.view_settings.exposure = -0.95
 
 prefs = bpy.context.preferences.addons["cycles"].preferences
 try:
@@ -215,9 +216,24 @@ micro.inputs["Fac"].default_value = 0.35
 nt.links.new(grain.outputs["Fac"], micro.inputs[1])
 nt.links.new(swell.outputs["Fac"], micro.inputs[2])
 bump = nt.nodes.new("ShaderNodeBump")
-bump.inputs["Strength"].default_value = 0.14
+bump.inputs["Strength"].default_value = 0.11
 bump.inputs["Distance"].default_value = 0.004
 nt.links.new(micro.outputs["Color"], bump.inputs["Height"])
+
+# The real relief, inferred from the de-lit albedo by DeepBump, sits UNDER the procedural
+# grain: the map supplies the panel bevels and machining the asset never shipped, the
+# procedural layer only adds micro-texture on top of it.
+if os.path.exists(TEX["normal"]):
+    tex_nrm = nt.nodes.new("ShaderNodeTexImage")
+    tex_nrm.image = image(TEX["normal"], non_color=True)
+    nmap = nt.nodes.new("ShaderNodeNormalMap")
+    nmap.inputs["Strength"].default_value = 0.85
+    nt.links.new(tex_nrm.outputs["Color"], nmap.inputs["Color"])
+    nt.links.new(nmap.outputs["Normal"], bump.inputs["Normal"])
+    print("[zp] normal map: DeepBump")
+else:
+    print("[zp] normal map: none — procedural micro-relief only")
+
 nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
 
 # Clear coat — the lacquer. This is the single thing separating an Iron Man suit from a raw

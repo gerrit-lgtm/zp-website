@@ -31,7 +31,8 @@ exists. See *What to demand from a 3D asset* below.
 **4. Render the sequence.**
 
 ```sh
-# 0. the texture inputs (derived, gitignored, so this runs first from a clean checkout)
+# 0. the texture inputs (derived, gitignored, so this runs first from a clean checkout).
+#    This de-lights the albedo and infers a real normal map — see "Materials" below.
 node render/textures.mjs
 
 # 1. one frame, to check the look — about ten seconds
@@ -162,3 +163,44 @@ Made to read as lacquered armour rather than raw casting:
 - **The white trim is remapped to dark steel.** The albedo paints big near-white patches; on
   a dark lacquered suit they read as stickers, and the white chest disc fought the mark that
   is meant to sit in it. Now the mark sits in a dark machined housing.
+
+
+---
+
+## Materials: closing the gap the asset leaves
+
+The suit ships **base colour only**, at 0.515 bits/pixel with 4:2:0 chroma and lighting
+projected into it from the source photographs. No normal, roughness, metallic or occlusion
+map. Every surface property was therefore either invented or derived. Two free, local steps
+now recover most of what is missing, and both run inside `render/textures.mjs`:
+
+**De-lighting** (`tools/delight.mjs`). A base colour should describe what a surface *is*, never
+how it happened to be lit. The albedo's painted shading is low-frequency — it varies slowly
+across the surface, while real material detail is fast — so dividing the image by a heavily
+blurred copy of itself removes the shading and keeps the detail. The result looks flatter on
+its own, which is correct: our lights supply the shading now.
+
+**DeepBump** (`tools/deepbump/`, GPL, ONNX, ~12 s for 4K). Infers a genuine normal map from the
+de-lit albedo. Order matters — run it before de-lighting and the painted shadows get read as
+geometry. This replaced a hand-rolled Sobel derivation that only amplified the JPEG blocks.
+
+Setup, once:
+
+```sh
+python3 -m venv tools/deepbump/.venv
+tools/deepbump/.venv/bin/pip install numpy onnxruntime imageio
+```
+
+If the venv is missing, `textures.mjs` warns and carries on; the render falls back to
+procedural micro-relief only.
+
+### What still cannot be recovered
+
+De-lighting and inference cannot invent detail the texture never had, and nothing here gives
+the model a skeleton — it has no armature, so it cannot be posed. For a real step up:
+
+- **Poly Haven** and **ambientCG** — CC0 PBR sets and HDRIs at 4K–8K, no attribution required.
+- **ArmorPaint** / **Material Maker** — free, open-source Substance alternatives for painting
+  real wear.
+- A bought asset (€50–500, ArtStation) — 4K–8K PBR, clean UVs, often rigged. Rigged is the
+  only route to a posed shot such as cards resting in an open palm.

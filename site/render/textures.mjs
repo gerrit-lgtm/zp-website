@@ -6,15 +6,19 @@
  * runnable from nothing but build-src/armored_suit.glb. It is the first step of the render
  * pipeline; scene.py will not load without it.
  *
- *   render/basecolor.png   the model's own albedo, extracted from the GLB
- *   render/glow.png        emissive mask: the blue tracery and trim already in the albedo
- *   render/orm.png         R occlusion, G roughness, B metalness
+ *   render/basecolor.png       the model's own albedo, extracted from the GLB
+ *   render/basecolor-flat.png  the same, de-lit — this is what the render uses
+ *   render/normal.png          real surface relief, inferred by DeepBump
+ *   render/glow.png            emissive mask: the blue tracery and trim in the albedo
+ *   render/orm.png             R occlusion, G roughness, B metalness
  */
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import sharp from 'sharp';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 
 const SRC = 'build-src/armored_suit.glb';
 const OUT = 'render';
@@ -27,6 +31,22 @@ const tex = doc.getRoot().listTextures()[0];
 if (!tex) throw new Error('no texture in ' + SRC);
 const albedo = Buffer.from(tex.getImage());
 await sharp(albedo).png().toFile(`${OUT}/basecolor.png`);
+
+// --- de-light, then infer relief from the de-lit copy
+// The albedo was made by projecting photographs onto the mesh, so it has shading painted in.
+// That shading would otherwise be lit a second time at render, and DeepBump would read the
+// painted shadows as geometry — so de-lighting has to happen before the normal is inferred.
+execFileSync('node', ['tools/delight.mjs', `${OUT}/basecolor.png`, `${OUT}/basecolor-flat.png`],
+             { stdio: 'inherit' });
+
+const PY = 'tools/deepbump/.venv/bin/python';
+if (existsSync(PY)) {
+  execFileSync(PY, ['tools/deepbump/cli.py', `${OUT}/basecolor-flat.png`, `${OUT}/normal.png`,
+                    'color_to_normals', '--color_to_normals-overlap', 'LARGE'], { stdio: 'ignore' });
+  console.log('  normal.png     inferred by DeepBump from the de-lit albedo');
+} else {
+  console.warn('  normal.png     SKIPPED — tools/deepbump/.venv missing (see WORKFLOW.md)');
+}
 
 const SIZE = 2048;
 const { data, info } = await sharp(albedo)
@@ -86,5 +106,6 @@ await sharp(orm, { raw: { width: SIZE, height: SIZE, channels: 3 } })
   .png().toFile(`${OUT}/orm.png`);
 
 console.log(`  basecolor.png  full-resolution source albedo`);
+console.log(`  basecolor-flat.png  de-lit, used by the render`);
 console.log(`  glow.png       ${SIZE}x${SIZE}`);
 console.log(`  orm.png        ${SIZE}x${SIZE}`);
