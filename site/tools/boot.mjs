@@ -1,0 +1,17 @@
+import puppeteer from 'puppeteer-core';
+const CHROME = process.env.HOME + '/.cache/puppeteer/chrome/mac_arm-143.0.7499.169/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing';
+const URL = process.argv[2] || 'http://127.0.0.1:4321/';
+const b = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--hide-scrollbars'] });
+const p = await b.newPage();
+await p.setViewport({ width: 1600, height: 900 });
+let bytes = 0;
+p.on('response', async r => { try { const h = r.headers()['content-length']; if (h) bytes += +h; } catch {} });
+const t0 = Date.now();
+await p.goto(URL, { waitUntil: 'domcontentloaded', timeout: 180000 });
+await p.waitForFunction(() => document.documentElement.classList.contains('rig-on'), { timeout: 300000 });
+const interactive = Date.now() - t0;
+const atInteractive = bytes;
+await new Promise(r => setTimeout(r, 25000));
+console.log(`  page usable after   ${(interactive / 1000).toFixed(1)}s and ${(atInteractive / 1e6).toFixed(1)} MB`);
+console.log(`  still streaming to  ${(bytes / 1e6).toFixed(1)} MB at +25s`);
+await b.close();

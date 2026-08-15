@@ -37,26 +37,39 @@ export class Film {
     const size = manifest.sizes.find(s => s.tag === (wide ? 'hd' : 'sd')) ?? manifest.sizes[0];
     this.dir = `assets/film/${size.tag}`;
 
+    this.ready = new Array(this.count).fill(false);
     let done = 0;
     const load = i => new Promise(resolve => {
       const img = new Image();
       img.decoding = 'async';
       img.src = `${this.dir}/f_${String(i).padStart(4, '0')}.webp`;
-      const finish = () => { onProgress?.(++done / this.count); resolve(img); };
+      const finish = () => { this.ready[i] = !!img.naturalWidth; done++; resolve(img); };
       img.onload = finish;
       img.onerror = finish;   // a missing frame must not stall the whole load
       this.frames[i] = img;
     });
 
-    // Fetch the opening frame first so something can be shown immediately, then the rest in
-    // small batches — a single burst of 360 requests just queues behind itself.
+    const batched = async (list, size, tick) => {
+      for (let i = 0; i < list.length; i += size) {
+        await Promise.all(list.slice(i, i + size).map(load));
+        tick?.();
+      }
+    };
+
+    // The full set is tens of megabytes, and waiting for all of it before showing anything
+    // would be a long blank stare at a progress bar. Hold the loader only for the opening
+    // stretch — enough that the first scroll is already covered — then release the page and
+    // keep fetching behind it. seek() falls back to the nearest frame that has arrived.
     await load(0);
     this.draw(0);
-    const rest = [...Array(this.count - 1)].map((_, k) => k + 1);
-    const BATCH = 12;
-    for (let i = 0; i < rest.length; i += BATCH) {
-      await Promise.all(rest.slice(i, i + BATCH).map(load));
-    }
+
+    const HEAD = Math.min(this.count - 1, Math.ceil(this.count * 0.18));
+    const head = [...Array(HEAD)].map((_, k) => k + 1);
+    await batched(head, 12, () => onProgress?.(done / (HEAD + 1)));
+    onProgress?.(1);
+
+    const tail = [...Array(this.count - 1 - HEAD)].map((_, k) => k + 1 + HEAD);
+    batched(tail, 12);          // deliberately not awaited
     return this;
   }
 
@@ -89,7 +102,14 @@ export class Film {
   seek(p) {
     if (!this.count) return;
     const t = p < 0 ? 0 : p > 1 ? 1 : p;
-    const i = Math.min(this.count - 1, Math.round(t * (this.count - 1)));
+    let i = Math.min(this.count - 1, Math.round(t * (this.count - 1)));
+    // Frames stream in after the page is released, so scrolling ahead of the download shows
+    // the nearest one that has landed rather than a blank canvas.
+    if (this.ready && !this.ready[i]) {
+      let back = i;
+      while (back > 0 && !this.ready[back]) back--;
+      i = back;
+    }
     this.draw(i);
 
     // Warm the frames just ahead of the playhead so a fast scroll does not hit an
