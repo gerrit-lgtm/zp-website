@@ -124,7 +124,7 @@ scene.render.image_settings.color_mode = "RGB"
 scene.render.image_settings.compression = 15
 scene.view_settings.view_transform = "AgX"
 scene.view_settings.look = "AgX - Punchy"
-scene.view_settings.exposure = -0.95
+scene.view_settings.exposure = -0.80
 
 prefs = bpy.context.preferences.addons["cycles"].preferences
 try:
@@ -184,8 +184,6 @@ nt.links.new(tex_base.outputs["Color"], trim_mask.inputs["Fac"])
 nt.links.new(trim_mask.outputs["Color"], base_mix.inputs["Fac"])
 nt.links.new(tex_base.outputs["Color"], base_mix.inputs[1])
 nt.links.new(steel.outputs[0], base_mix.inputs[2])
-nt.links.new(base_mix.outputs["Color"], bsdf.inputs["Base Color"])
-
 # Roughness from the ORM's green channel, scaled down hard: this is lacquered armour, so it
 # should be glossy everywhere and mirror-like nowhere.
 tex_orm = nt.nodes.new("ShaderNodeTexImage")
@@ -196,7 +194,6 @@ rough_scale = nt.nodes.new("ShaderNodeMath")
 rough_scale.operation = "MULTIPLY"
 rough_scale.inputs[1].default_value = 0.42
 nt.links.new(split.outputs["Green"], rough_scale.inputs[0])
-nt.links.new(rough_scale.outputs["Value"], bsdf.inputs["Roughness"])
 bsdf.inputs["Metallic"].default_value = 0.82
 
 # Micro-surface. The asset has no normal map, and deriving one from a low-bitrate JPEG only
@@ -235,6 +232,59 @@ else:
     print("[zp] normal map: none — procedural micro-relief only")
 
 nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+# Curvature, tightened to a narrow band around the convex edges. Pointiness sits at 0.5 on a
+# flat surface, above on ridges, below in crevices.
+geo = nt.nodes.new("ShaderNodeNewGeometry")
+edge = nt.nodes.new("ShaderNodeValToRGB")
+edge.color_ramp.elements[0].position = 0.52
+edge.color_ramp.elements[1].position = 0.62
+cav = nt.nodes.new("ShaderNodeValToRGB")          # the inverse: recesses
+cav.color_ramp.elements[0].position = 0.36
+cav.color_ramp.elements[0].color = (1, 1, 1, 1)
+cav.color_ramp.elements[1].position = 0.49
+cav.color_ramp.elements[1].color = (0, 0, 0, 1)
+nt.links.new(geo.outputs["Pointiness"], edge.inputs["Fac"])
+nt.links.new(geo.outputs["Pointiness"], cav.inputs["Fac"])
+
+# Edges rub through to bare bright metal.
+bare = nt.nodes.new("ShaderNodeRGB")
+bare.outputs[0].default_value = (0.42, 0.45, 0.50, 1)
+wear_mix = nt.nodes.new("ShaderNodeMixRGB")
+wear_mix.blend_type = "MIX"
+wear_mix.inputs["Fac"].default_value = 0.0
+edge_amt = nt.nodes.new("ShaderNodeMath")
+edge_amt.operation = "MULTIPLY"
+edge_amt.inputs[1].default_value = 0.38            # how worn: 0 factory-fresh, 1 battered
+nt.links.new(edge.outputs["Color"], edge_amt.inputs[0])
+nt.links.new(edge_amt.outputs["Value"], wear_mix.inputs["Fac"])
+nt.links.new(base_mix.outputs["Color"], wear_mix.inputs[1])
+nt.links.new(bare.outputs[0], wear_mix.inputs[2])
+nt.links.new(wear_mix.outputs["Color"], bsdf.inputs["Base Color"])
+
+# Rubbed edges are polished; recesses hold dust and stay rough. Both ride on the map value.
+rough_edge = nt.nodes.new("ShaderNodeMath")
+rough_edge.operation = "MULTIPLY_ADD"
+rough_edge.inputs[1].default_value = -0.55         # edges: smoother
+rough_cav = nt.nodes.new("ShaderNodeMath")
+rough_cav.operation = "MULTIPLY_ADD"
+rough_cav.inputs[1].default_value = 0.20           # crevices: rougher
+nt.links.new(edge.outputs["Color"], rough_edge.inputs[0])
+nt.links.new(rough_scale.outputs["Value"], rough_edge.inputs[2])
+nt.links.new(cav.outputs["Color"], rough_cav.inputs[0])
+nt.links.new(rough_edge.outputs["Value"], rough_cav.inputs[2])
+rough_clamp = nt.nodes.new("ShaderNodeClamp")
+rough_clamp.inputs["Min"].default_value = 0.04
+rough_clamp.inputs["Max"].default_value = 0.85
+nt.links.new(rough_cav.outputs["Value"], rough_clamp.inputs["Value"])
+nt.links.new(rough_clamp.outputs["Result"], bsdf.inputs["Roughness"])
+
+# Brushed metal does not reflect evenly in all directions — the anisotropy is what stops
+# large panels reading as moulded plastic.
+if "Anisotropic" in bsdf.inputs:
+    bsdf.inputs["Anisotropic"].default_value = 0.35
+    if "Anisotropic Rotation" in bsdf.inputs:
+        bsdf.inputs["Anisotropic Rotation"].default_value = 0.15
 
 # Clear coat — the lacquer. This is the single thing separating an Iron Man suit from a raw
 # metal casting: a second, sharper specular layer sitting over the base.
