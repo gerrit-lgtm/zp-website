@@ -194,6 +194,36 @@ tools/deepbump/.venv/bin/pip install numpy onnxruntime imageio
 If the venv is missing, `textures.mjs` warns and carries on; the render falls back to
 procedural micro-relief only.
 
+### Better still: don't use the asset's albedo at all
+
+De-lighting and DeepBump both work on a texture that is 0.515 bits/pixel with the photographer's
+lighting painted in. The big pale smears across the helmet crown and thighs come from that
+texture, and they survive **both** de-lighting and AI upscaling — measured, 15 Aug 2026.
+
+A scanned CC0 material replaces it outright and costs nothing. `ZP_PBR` points at a directory of
+ambientCG/PolyHaven maps (`*Color.png`, `*Roughness.png`, `*NormalGL.png`); the scanned set takes
+the plate, and the original albedo is mixed back in wherever it is **saturated**, which is exactly
+where the blue tracery and coloured trim live. A tileable 2K material carries far more detail per
+inch than one 4096² atlas stretched over an entire body, which is what actually limits the
+close-ups.
+
+```sh
+# download once — ~50 MB, CC0, no attribution required
+mkdir -p build-src/pbr/Metal038 && cd build-src/pbr/Metal038 \
+  && curl -sSL -o m.zip "https://ambientcg.com/get?file=Metal038_2K-PNG.zip" && unzip -oq m.zip
+
+# the settled values
+export ZP_PBR="$PWD/build-src/pbr/Metal038"
+export ZP_PBR_TILE=16 ZP_PBR_TINT=0.23 ZP_PBR_NORMAL=0.9
+export ZP_ROUGH_SCALE=1.0 ZP_COAT=0.22 ZP_COAT_ROUGH=0.28
+blender -b -P render/scene.py -- --frames 360 --out render/seq --width 2560 --samples 128
+```
+
+Every one of those is an environment override with the old value as its default, so omitting them
+reproduces the previous look exactly. `ZP_FIG` likewise swaps the figure GLB. Arrived at by sweeping
+one variable at a time against the helmet close-up at `--at 0.03`, which is the shot that punishes a
+bad surface hardest.
+
 ### What still cannot be recovered
 
 De-lighting and inference cannot invent detail the texture never had, and nothing here gives

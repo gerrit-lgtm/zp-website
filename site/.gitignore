@@ -1,5 +1,6 @@
 node_modules
 build-src/*.glb
+build-src/pbr/
 tools/final
 tools/verify
 tools/live

@@ -41,7 +41,7 @@ ONLY_P = arg("--at", None)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-FIG = os.path.normpath(os.path.join(ROOT, "..", "test", "armored_suit.glb"))
+FIG = os.environ.get("ZP_FIG") or os.path.normpath(os.path.join(ROOT, "..", "test", "armored_suit.glb"))
 LOGO = os.path.normpath(os.path.join(ROOT, "..", "test", "zp_logo_3d.glb"))
 TEX = {k: os.path.join(HERE, v) for k, v in
        {"base": "basecolor-flat.png", "glow": "glow.png",
@@ -192,7 +192,7 @@ split = nt.nodes.new("ShaderNodeSeparateColor")
 nt.links.new(tex_orm.outputs["Color"], split.inputs["Color"])
 rough_scale = nt.nodes.new("ShaderNodeMath")
 rough_scale.operation = "MULTIPLY"
-rough_scale.inputs[1].default_value = 0.42
+rough_scale.inputs[1].default_value = float(os.environ.get("ZP_ROUGH_SCALE", 0.42))
 nt.links.new(split.outputs["Green"], rough_scale.inputs[0])
 bsdf.inputs["Metallic"].default_value = 0.82
 
@@ -224,7 +224,7 @@ if os.path.exists(TEX["normal"]):
     tex_nrm = nt.nodes.new("ShaderNodeTexImage")
     tex_nrm.image = image(TEX["normal"], non_color=True)
     nmap = nt.nodes.new("ShaderNodeNormalMap")
-    nmap.inputs["Strength"].default_value = 0.85
+    nmap.inputs["Strength"].default_value = float(os.environ.get("ZP_NORMAL_STRENGTH", 0.85))
     nt.links.new(tex_nrm.outputs["Color"], nmap.inputs["Color"])
     nt.links.new(nmap.outputs["Normal"], bump.inputs["Normal"])
     print("[zp] normal map: DeepBump")
@@ -232,6 +232,71 @@ else:
     print("[zp] normal map: none — procedural micro-relief only")
 
 nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+# Optional: a real scanned PBR set in place of the asset's own albedo. Point ZP_PBR at a
+# directory of ambientCG/PolyHaven maps. The suit's own albedo is 0.515 bits/pixel with the
+# photographer's lighting painted into it — big grey blotches that no amount of shading fixes,
+# and they survive both de-lighting and AI upscaling. A tileable scanned metal carries far more
+# texel density than one 4096² atlas stretched over a whole body, which is what actually limits
+# the close-ups. The original albedo stays wired as the trim mask, and the blue tracery is
+# untouched because it is emissive from glow.png, not from base colour.
+PBR_DIR = os.environ.get("ZP_PBR")
+if PBR_DIR:
+    import glob as _glob
+
+    def _pbr(kind):
+        hits = _glob.glob(os.path.join(PBR_DIR, "*%s.png" % kind))
+        return hits[0] if hits else None
+
+    tile_n = float(os.environ.get("ZP_PBR_TILE", 10.0))
+    tint_v = float(os.environ.get("ZP_PBR_TINT", 0.30))
+    uvsrc = nt.nodes.new("ShaderNodeTexCoord")
+    tile = nt.nodes.new("ShaderNodeMapping")
+    tile.inputs["Scale"].default_value = (tile_n, tile_n, tile_n)
+    nt.links.new(uvsrc.outputs["UV"], tile.inputs["Vector"])
+
+    p_col, p_rough, p_nrm = _pbr("Color"), _pbr("Roughness"), _pbr("NormalGL")
+    if p_col:
+        tc = nt.nodes.new("ShaderNodeTexImage")
+        tc.image = image(p_col)
+        nt.links.new(tile.outputs["Vector"], tc.inputs["Vector"])
+        tint = nt.nodes.new("ShaderNodeMixRGB")
+        tint.blend_type = "MULTIPLY"
+        tint.inputs["Fac"].default_value = 1.0
+        tint.inputs[2].default_value = (tint_v, tint_v * 1.06, tint_v * 1.22, 1)
+        nt.links.new(tc.outputs["Color"], tint.inputs[1])
+        # The suit's identity — the blue tracery and the coloured trim — is painted into the
+        # albedo, and it is the one thing there worth keeping. Saturation separates it cleanly
+        # from the blotchy grey plate: the tracery is vivid, the bad patches are near-neutral.
+        # So the scanned metal takes the desaturated areas and the albedo keeps the coloured
+        # ones. Without this the suit powers up with nothing to light.
+        hsv = nt.nodes.new("ShaderNodeSeparateColor")
+        hsv.mode = "HSV"
+        nt.links.new(tex_base.outputs["Color"], hsv.inputs["Color"])
+        sat = nt.nodes.new("ShaderNodeValToRGB")
+        sat.color_ramp.elements[0].position = float(os.environ.get("ZP_PBR_SAT_LO", 0.10))
+        sat.color_ramp.elements[1].position = float(os.environ.get("ZP_PBR_SAT_HI", 0.30))
+        nt.links.new(hsv.outputs["Green"], sat.inputs["Fac"])       # S of HSV
+        keep = nt.nodes.new("ShaderNodeMixRGB")
+        keep.blend_type = "MIX"
+        nt.links.new(sat.outputs["Color"], keep.inputs["Fac"])
+        nt.links.new(tint.outputs["Color"], keep.inputs[1])         # plate: scanned metal
+        nt.links.new(tex_base.outputs["Color"], keep.inputs[2])     # tracery: original albedo
+        nt.links.new(keep.outputs["Color"], base_mix.inputs[1])
+    if p_rough:
+        tr = nt.nodes.new("ShaderNodeTexImage")
+        tr.image = image(p_rough, non_color=True)
+        nt.links.new(tile.outputs["Vector"], tr.inputs["Vector"])
+        nt.links.new(tr.outputs["Color"], rough_scale.inputs[0])
+    if p_nrm:
+        tn = nt.nodes.new("ShaderNodeTexImage")
+        tn.image = image(p_nrm, non_color=True)
+        nt.links.new(tile.outputs["Vector"], tn.inputs["Vector"])
+        nm = nt.nodes.new("ShaderNodeNormalMap")
+        nm.inputs["Strength"].default_value = float(os.environ.get("ZP_PBR_NORMAL", 0.7))
+        nt.links.new(tn.outputs["Color"], nm.inputs["Color"])
+        nt.links.new(nm.outputs["Normal"], bump.inputs["Normal"])
+    print("[zp] PBR override: %s  tile=%g" % (os.path.basename(PBR_DIR.rstrip("/")), tile_n))
 
 # Curvature, tightened to a narrow band around the convex edges. Pointiness sits at 0.5 on a
 # flat surface, above on ridges, below in crevices.
@@ -289,8 +354,8 @@ if "Anisotropic" in bsdf.inputs:
 # Clear coat — the lacquer. This is the single thing separating an Iron Man suit from a raw
 # metal casting: a second, sharper specular layer sitting over the base.
 if "Coat Weight" in bsdf.inputs:
-    bsdf.inputs["Coat Weight"].default_value = 0.85
-    bsdf.inputs["Coat Roughness"].default_value = 0.055
+    bsdf.inputs["Coat Weight"].default_value = float(os.environ.get("ZP_COAT", 0.85))
+    bsdf.inputs["Coat Roughness"].default_value = float(os.environ.get("ZP_COAT_ROUGH", 0.055))
     if "Coat IOR" in bsdf.inputs:
         bsdf.inputs["Coat IOR"].default_value = 1.55
 

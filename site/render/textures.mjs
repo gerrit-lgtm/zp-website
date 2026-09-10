@@ -20,7 +20,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 
-const SRC = 'build-src/armored_suit.glb';
+const SRC = process.env.ZP_FIG || 'build-src/armored_suit.glb';
 const OUT = 'render';
 await mkdir(OUT, { recursive: true });
 
